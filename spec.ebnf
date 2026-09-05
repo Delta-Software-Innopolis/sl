@@ -1,0 +1,54 @@
+# EBNF https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form
+program = { simple_decl | routine_decl };
+simple_decl = var_decl | type_decl;
+var_decl
+  = "var", id, ":", type, [ "=", expr ]
+  | "var", id, "=", expr;
+
+type_decl = "type", id, "=", type;
+type = primitive_type | user_type | id;
+primitive_type = "integer" | "real" | "boolean";
+user_type = array_type | record_type;
+array_type = "array", "[", [ expr ], "]", type;
+record_type = "record", { var_decl }, "end";
+
+statement
+  = assignment
+  | routine_call
+  | while_loop
+  | for_loop
+  | if_statement
+  | return_statement;
+assignment = modifiable_primary, ":=", expr;
+routine_call = id, "(", [ expr, { ",", expr } ], ")";
+while_loop = "while", expr, "loop", body, "end";
+for_loop = "for", id, "in", range, [ "reverse" ], "loop", body, "end";
+range = expr, [ "..", expr ];
+if_statement = "if", expr, "then", body, [ "else", body ], "end";
+return_statement = "return", [ expr ];
+
+routine_decl = routine_header, [ routine_body ];
+routine_header = "routine", id, "(", [ params ], ")", [ ":", type ];
+routine_body
+  = "=", body, "end"
+  | "=>", expr;
+params = param_decl, { ",", param_decl };
+param_decl = id, ":", type;
+body = { simple_decl | statement };
+
+expr = relation, { ( "and" | "or" | "xor" ), relation };
+relation = simple, [ ( "<" | "<=" | ">" | ">=" | "=" | "/=" ), simple ];
+simple = factor, { ( "*" | "/" | "%" ), factor };
+factor = summand, { ( "+" | "-" ), summand };
+summand = [ sign | "not" ], primary;
+primary
+  = int_lit
+  | real_lit
+  | boolean_lit
+  | modifiable_primary
+  | routine_call
+  | "(", expr, ")";
+
+sign = "+" | "-";
+boolean_lit = "true" | "false";
+modifiable_primary = id, { ".", id | "[", expr, "]" };
