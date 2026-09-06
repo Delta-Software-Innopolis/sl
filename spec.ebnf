@@ -38,9 +38,10 @@ body = { simple_decl | statement };
 
 expr = relation, { ( "and" | "or" | "xor" ), relation };
 relation = simple, [ ( "<" | "<=" | ">" | ">=" | "=" | "/=" ), simple ];
-simple = factor, { ( "*" | "/" | "%" ), factor };
-factor = summand, { ( "+" | "-" ), summand };
-summand = [ sign | "not" ], primary;
+simple = factor, { ( "+" | "-" ), factor };
+factor = summand, { ( "*" | "/" | "%" ), summand };
+summand = unary;
+unary = ( sign | "not" ), unary | primary;
 primary
   = int_lit
   | real_lit

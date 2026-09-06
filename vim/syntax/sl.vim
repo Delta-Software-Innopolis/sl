@@ -1,4 +1,4 @@
-syntax keyword slKeyword var type routine if then else end while for loop in reverse record array
+syntax keyword slKeyword var type routine if then else end while for loop in reverse record array and or xor not
 syntax keyword slBoolean true false
 syntax keyword slType integer real boolean
 syntax keyword slFunction print_integer print_boolean print_real
