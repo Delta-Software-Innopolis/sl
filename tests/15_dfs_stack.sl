@@ -1,37 +1,37 @@
-var n : integer = 6
-var adj : array[6] array[6] boolean
-var visited : array[6] boolean
-var stack : array[6] integer
-var top : integer = 0
+var n: integer = 6
+var adj: array[6] array[6] boolean
+var visited: array[6] boolean
+var stack: array[6] integer
+var top: integer = 0
 
-routine push(v : integer) =
+routine push(v: integer) =
     stack[top] := v
     top := top + 1
 end
 
-routine pop() : integer =
+routine pop(): integer =
     top := top - 1
     return stack[top]
 end
 
-routine is_empty() : boolean => top = 0
+routine is_empty(): boolean => top = 0
 
-routine add_edge(u : integer, v : integer) =
+routine add_edge(u: integer, v: integer) =
     adj[u][v] := true
     adj[v][u] := true
 end
 
-routine dfs(start : integer) =
+routine dfs(start: integer) =
     push(start)
 
     while not is_empty() loop
-        var v : integer = pop()
+        var v: integer = pop()
 
         if not visited[v] then
             visited[v] := true
             print_integer(v)
 
-            var neighbor : integer = 0
+            var neighbor: integer = 0
             while neighbor < n loop
                 if adj[v][neighbor] and not visited[neighbor] then
                     push(neighbor)
