@@ -11,7 +11,7 @@ function! GetMylangIndent()
   let curline = getline(v:lnum)
   let ind = indent(prevlnum)
 
-  if prevline =~ '\%(then\|loop\|else\)\s*$' || prevline =~ '=\s*$'
+  if prevline =~ '\%(record\|then\|loop\|else\)\s*$' || prevline =~ '=\s*$'
     let ind += shiftwidth()
   endif
 

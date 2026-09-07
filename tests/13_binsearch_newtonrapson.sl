@@ -1,4 +1,9 @@
-routine binary_sqrt(target: real, left: real, right: real, steps: integer): real =
+routine binary_sqrt(
+    target: real,
+    left: real,
+    right: real,
+    steps: integer
+): real =
     var mid: real
 
     for i in 1 .. steps loop
