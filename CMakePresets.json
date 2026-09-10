@@ -1,0 +1,17 @@
+{
+    "version": 8,
+    "configurePresets": [
+        {
+            "name": "Clang",
+            "displayName": "Clang 20.1.7 arm64-apple-darwin25.0.0",
+            "description": "Использование компиляторов: C = /opt/homebrew/bin/clang, CXX = /opt/homebrew/bin/clang++",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_C_COMPILER": "/opt/homebrew/bin/clang",
+                "CMAKE_CXX_COMPILER": "/opt/homebrew/bin/clang++",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        }
+    ]
+}
