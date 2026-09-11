@@ -41,6 +41,7 @@ typedef enum {
     T_INLINE_FUNC,
     T_REVERSE,
     T_RANGE,
+    T_IN,
 
     T_EQUAL,
     T_NOT_EQ,
@@ -85,5 +86,7 @@ typedef struct SLTokenArray {
 bool SLTokenArrayPush(SLTokenArray* array, SLToken token);
 bool SLTokenEquals(const char* start, int length, const char* expected);
 bool SLAppendKeywordOrID(SLTokenArray* array, char buffer[100], int length, int position, int line, char* start);
+void SLTokenDebugPrint(const char* token_type, char value[128], int line, int position);
+void SLTokenDebugPrintSlice(const char* token_type, char* start, int length, int line, int position);
 
 #endif

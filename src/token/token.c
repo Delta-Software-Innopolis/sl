@@ -1,5 +1,13 @@
 #include "token.h"
 
+void SLTokenDebugPrint(const char* token_type, char value[128], int line, int position) {
+    printf("Token Type: %s, value: %s, line: %d, position: %d\n", token_type, value, line, position);
+}
+
+void SLTokenDebugPrintSlice(const char* token_type, char* start, int length, int line, int position) {
+    printf("Token Type: %s, value: %.*s, line: %d, position: %d\n", token_type, length, start, line, position);
+}
+
 
 bool SLTokenArrayPush(SLTokenArray* array, SLToken token) {
     if (array->count == array->capacity) {
@@ -25,7 +33,7 @@ bool SLTokenEquals(const char* start, int length, const char* expected) {
     return length == (int) expected_length && memcmp(start, expected, expected_length) == 0;
 }
 
-bool SLAppendKeywordOrID(SLTokenArray* array, char buffer[100], int length, int position, int line, char* start) {
+bool SLAppendKeywordOrID(SLTokenArray* array, char buffer[128], int length, int position, int line, char* start) {
     SLToken token;
 
     token.start = start;
@@ -39,26 +47,26 @@ bool SLAppendKeywordOrID(SLTokenArray* array, char buffer[100], int length, int 
         token.type = T_ROUTINE;
 
         if (DEBUG) {
-            printf("Token Type: ROUTINE, value: %s, line: %d, position: %d\n", buffer, line, position);
+            SLTokenDebugPrint("ROUTINE", buffer, line, position);
         }
     
     } else if (strcmp(buffer, "integer") == 0) {
         token.type = T_INTEGER;
 
         if (DEBUG) {
-            printf("Token Type: INTEGER, value: %s, line: %d, position: %d\n", buffer, line, position);
+            SLTokenDebugPrint("INTEGER", buffer, line, position);
         }
     } else if (strcmp(buffer, "var") == 0) {
         token.type = T_VAR;
 
         if (DEBUG) {
-            printf("Token Type: VAR, value: %s, line: %d, position: %d\n", buffer, line, position);
+            SLTokenDebugPrint("VAR", buffer, line, position);
         }
     } else if (strcmp(buffer, "for") == 0) {
         token.type = T_FOR;
 
         if (DEBUG) {
-            printf("Token Type: FOR, value: %s, line: %d, position: %d\n", buffer, line, position);
+            SLTokenDebugPrint("FOR", buffer, line, position);
         }
     } else {
         token.type = T_IDENTIFIER;
@@ -68,7 +76,7 @@ bool SLAppendKeywordOrID(SLTokenArray* array, char buffer[100], int length, int 
         token.position = position;
 
         if (DEBUG) {
-            printf("Token Type: IDENTIFIER, value: %s, line: %d, position: %d\n", buffer, line, position);
+            SLTokenDebugPrint("IDENTIFIER", buffer, line, position);
         }
     }
 
