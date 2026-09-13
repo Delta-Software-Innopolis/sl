@@ -23,11 +23,15 @@ bool SLScanText(SLCompilerState* state) {
 
     // TODO: Fix position pls, now it always 1
     int line = 1;
-    int position = 1;
+    int position = 0;
+    int realPosition = 0;
 
     bool skipNextToken = false;
     
     for (int i = 0; i < state->text_size; i++) {
+        realPosition++;
+        position++;
+
         if (skipNextToken) {
             skipNextToken = false;
             continue;
@@ -41,6 +45,7 @@ bool SLScanText(SLCompilerState* state) {
                 return false;
             }
             
+            position = realPosition;
             continue;
         }
         
@@ -50,12 +55,14 @@ bool SLScanText(SLCompilerState* state) {
             }
 
             line++;
-            position = 1;
+            position = 0;
+            realPosition = 0;
             continue;
         }
 
         if ((isalpha(c) || c == '_') && !readingID) {
             readingID = true;
+            position--;
             
             start = &state->text[i];
             buffer[bufWriter++] = c;
@@ -64,11 +71,13 @@ bool SLScanText(SLCompilerState* state) {
 
         if ((isalnum(c) || c == '_') && readingID) {
             buffer[bufWriter++] = c;
+            position--;
             continue;
         } else {
             if (!SLResetBuffer(&state->tokens, buffer, &bufWriter, position, line, &start, &readingID)) {
                 return false;
             }
+            position = realPosition;
         }
 
         
@@ -143,6 +152,244 @@ bool SLScanText(SLCompilerState* state) {
 
                 if (DEBUG) {
                     SLTokenDebugPrintSlice("COMMA", token.start, token.length, line, position);
+                }
+
+                break;
+            }
+
+            case ';': {
+                token.start = &state->text[i];
+                token.length = 1;
+                token.type = T_SEMICOLON;
+
+                SLTokenArrayPush(&state->tokens, token);
+
+                if (DEBUG) {
+                    SLTokenDebugPrintSlice("SEMICOLON", token.start, token.length, line, position);
+                }
+
+                break;
+            }
+
+            case '.': {
+                if (nc == '.') {
+                    token.start = &state->text[i];
+                    token.length = 2;
+                    token.type = T_RANGE;
+
+                    SLTokenArrayPush(&state->tokens, token);
+
+                    if (DEBUG) {
+                        SLTokenDebugPrintSlice("RANGE", token.start, token.length, line, position);
+                    }
+
+                    skipNextToken = true;
+                } else {
+                    token.start = &state->text[i];
+                    token.length = 1;
+                    token.type = T_DOT;
+
+                    SLTokenArrayPush(&state->tokens, token);
+
+                    if (DEBUG) {
+                        SLTokenDebugPrintSlice("DOT", token.start, token.length, line, position);
+                    }
+                }
+
+                break;
+            }
+
+            case '[': {
+                token.start = &state->text[i];
+                token.length = 1;
+                token.type = T_LBRACKET;
+
+                SLTokenArrayPush(&state->tokens, token);
+
+                if (DEBUG) {
+                    SLTokenDebugPrintSlice("LEFT BRACKET", token.start, token.length, line, position);
+                }
+
+                break;
+            }
+
+            case ']': {
+                token.start = &state->text[i];
+                token.length = 1;
+                token.type = T_RBRACKET;
+
+                SLTokenArrayPush(&state->tokens, token);
+
+                if (DEBUG) {
+                    SLTokenDebugPrintSlice("RIGHT BRACKET", token.start, token.length, line, position);
+                }
+
+                break;
+            }
+
+            case '=': {
+                if (nc == '>') {
+                    token.start = &state->text[i];
+                    token.length = 2;
+                    token.type = T_INLINE_FUNC;
+
+                    SLTokenArrayPush(&state->tokens, token);
+
+                    if (DEBUG) {
+                        SLTokenDebugPrintSlice("INLINE FUNC", token.start, token.length, line, position);
+                    }
+
+                    skipNextToken = true;
+                } else {
+                    token.start = &state->text[i];
+                    token.length = 1;
+                    token.type = T_EQUAL;
+
+                    SLTokenArrayPush(&state->tokens, token);
+
+                    if (DEBUG) {
+                        SLTokenDebugPrintSlice("EQUAL", token.start, token.length, line, position);
+                    }
+                }
+
+                break;
+            }
+
+            case '/': {
+                if (nc == '=') {
+                    token.start = &state->text[i];
+                    token.length = 2;
+                    token.type = T_NOT_EQ;
+
+                    SLTokenArrayPush(&state->tokens, token);
+
+                    if (DEBUG) {
+                        SLTokenDebugPrintSlice("NOT EQUAL", token.start, token.length, line, position);
+                    }
+
+                    skipNextToken = true;
+                } else {
+                    token.start = &state->text[i];
+                    token.length = 1;
+                    token.type = T_DIVIDE;
+
+                    SLTokenArrayPush(&state->tokens, token);
+
+                    if (DEBUG) {
+                        SLTokenDebugPrintSlice("DIVIDE", token.start, token.length, line, position);
+                    }
+                }
+
+                break;
+            }
+
+            case '<': {
+                if (nc == '=') {
+                    token.start = &state->text[i];
+                    token.length = 2;
+                    token.type = T_LESS_EQ;
+
+                    SLTokenArrayPush(&state->tokens, token);
+
+                    if (DEBUG) {
+                        SLTokenDebugPrintSlice("LESS OR EQUAL", token.start, token.length, line, position);
+                    }
+
+                    skipNextToken = true;
+                } else {
+                    token.start = &state->text[i];
+                    token.length = 1;
+                    token.type = T_LESS;
+
+                    SLTokenArrayPush(&state->tokens, token);
+
+                    if (DEBUG) {
+                        SLTokenDebugPrintSlice("LESS", token.start, token.length, line, position);
+                    }
+                }
+
+                break;
+            }
+
+            case '>': {
+                if (nc == '=') {
+                    token.start = &state->text[i];
+                    token.length = 2;
+                    token.type = T_GREATER_EQ;
+
+                    SLTokenArrayPush(&state->tokens, token);
+
+                    if (DEBUG) {
+                        SLTokenDebugPrintSlice("GREATER OR EQUAL", token.start, token.length, line, position);
+                    }
+
+                    skipNextToken = true;
+                } else {
+                    token.start = &state->text[i];
+                    token.length = 1;
+                    token.type = T_GREATER;
+
+                    SLTokenArrayPush(&state->tokens, token);
+
+                    if (DEBUG) {
+                        SLTokenDebugPrintSlice("GREATER", token.start, token.length, line, position);
+                    }
+                }
+
+                break;
+            }
+
+            case '+': {
+                token.start = &state->text[i];
+                token.length = 1;
+                token.type = T_PLUS;
+
+                SLTokenArrayPush(&state->tokens, token);
+
+                if (DEBUG) {
+                    SLTokenDebugPrintSlice("PLUS", token.start, token.length, line, position);
+                }
+
+                break;
+            }
+
+            case '-': {
+                token.start = &state->text[i];
+                token.length = 1;
+                token.type = T_MINUS;
+
+                SLTokenArrayPush(&state->tokens, token);
+
+                if (DEBUG) {
+                    SLTokenDebugPrintSlice("MINUS", token.start, token.length, line, position);
+                }
+
+                break;
+            }
+
+            case '*': {
+                token.start = &state->text[i];
+                token.length = 1;
+                token.type = T_MULTIPLY;
+
+                SLTokenArrayPush(&state->tokens, token);
+
+                if (DEBUG) {
+                    SLTokenDebugPrintSlice("MULTIPLY", token.start, token.length, line, position);
+                }
+
+                break;
+            }
+
+            case '%': {
+                token.start = &state->text[i];
+                token.length = 1;
+                token.type = T_MODULO;
+
+                SLTokenArrayPush(&state->tokens, token);
+
+                if (DEBUG) {
+                    SLTokenDebugPrintSlice("MODULO", token.start, token.length, line, position);
                 }
 
                 break;
