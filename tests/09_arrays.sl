@@ -30,7 +30,7 @@ routine main() =
     for n in numbers loop
         print_integer(n)
     end
-    print(sum_array(numbers))
+    print_integer(sum_array(numbers))
 
     fill_doubled(numbers)
     for n in numbers loop
