@@ -1,7 +1,7 @@
 #include "lexer.h"
 
-bool SLResetBuffer(SLTokenArray* tokens, char buffer[128], int* bufWriter, int position, int line, char** start, bool* reading) {
-    if (!(*reading)) return true;
+bool SLResetBuffer(SLTokenArray* tokens, char buffer[128], int* bufWriter, int position, int line, char** start, bool* readingID, bool* readingInteger, bool *readingReal) {
+    if (!(*readingID) && !(*readingInteger) && !(*readingReal)) return true;
 
     buffer[*bufWriter] = '\0';
     if (!SLAppendKeywordOrID(tokens, buffer, *bufWriter, position, line, *start)) {
@@ -9,7 +9,9 @@ bool SLResetBuffer(SLTokenArray* tokens, char buffer[128], int* bufWriter, int p
     }
     *bufWriter = 0;
     *start = NULL;
-    *reading = false;
+    *readingID = false;
+    *readingInteger = false;
+    *readingReal = false;
 
     return true;
 }
@@ -17,17 +19,18 @@ bool SLResetBuffer(SLTokenArray* tokens, char buffer[128], int* bufWriter, int p
 bool SLScanText(SLCompilerState* state) {
 
     bool readingID;
+    bool readingInteger;
+    bool readingReal;
     char* start = NULL;
     char buffer[128];
     int bufWriter = 0;
 
-    // TODO: Fix position pls, now it always 1
     int line = 1;
     int position = 0;
     int realPosition = 0;
 
     bool skipNextToken = false;
-    
+
     for (int i = 0; i < state->text_size; i++) {
         realPosition++;
         position++;
@@ -38,50 +41,59 @@ bool SLScanText(SLCompilerState* state) {
         }
 
         char c = state->text[i];
-        char nc = state->text[i + 1];
+        char nc = state->text[i + 1]; // if at last symbol it will read null character so its safe
 
-        if (c == ' ' || c == '\t' || c == '\r') {
-            if (!SLResetBuffer(&state->tokens, buffer, &bufWriter, position, line, &start, &readingID)) {
+        if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+            if (!SLResetBuffer(&state->tokens, buffer, &bufWriter, position, line, &start, &readingID, &readingInteger, &readingReal)) {
                 return false;
             }
-            
+
+            if (c == '\n') {
+                line++;
+                realPosition = 0;
+            }
+
             position = realPosition;
-            continue;
-        }
-        
-        if (c == '\n') {
-            if (!SLResetBuffer(&state->tokens, buffer, &bufWriter, position, line, &start, &readingID)) {
-                return false;
-            }
-
-            line++;
-            position = 0;
-            realPosition = 0;
             continue;
         }
 
         if ((isalpha(c) || c == '_') && !readingID) {
             readingID = true;
             position--;
-            
+
             start = &state->text[i];
             buffer[bufWriter++] = c;
             continue;
         }
 
-        if ((isalnum(c) || c == '_') && readingID) {
+        if (isdigit(c) && !readingID && !readingInteger && !readingReal) {
+            readingInteger = true;
+            position--;
+
+            start = &state->text[i];
+            buffer[bufWriter++] = c;
+            continue;
+        }
+
+        if ((isdigit(c) && (readingInteger || readingReal)) || (c == '.' && nc != '.' && readingInteger)) {
+            buffer[bufWriter++] = c;
+            position--;
+            if (c == '.') {
+                readingInteger = false;
+                readingReal = true;
+            }
+            continue;
+        } else if ((isalnum(c) || c == '_') && readingID) {
             buffer[bufWriter++] = c;
             position--;
             continue;
         } else {
-            if (!SLResetBuffer(&state->tokens, buffer, &bufWriter, position, line, &start, &readingID)) {
+            if (!SLResetBuffer(&state->tokens, buffer, &bufWriter, position, line, &start, &readingID, &readingInteger, &readingReal)) {
                 return false;
             }
             position = realPosition;
         }
 
-        
-        // TODO: Add all simple tokens
         SLToken token;
         token.line = line;
         token.position = position;
@@ -394,14 +406,14 @@ bool SLScanText(SLCompilerState* state) {
 
                 break;
             }
-            
+
             default:
                 break;
         }
-        
+
 
         // TODO: Implement skipping comments!!1!1
-        
+
     }
 
     return true;

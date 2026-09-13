@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <ctype.h>
 
 #define DEBUG 1
 
@@ -28,7 +29,7 @@ typedef enum {
     T_REAL,
     T_ARRAY,
     T_RECORD,
-    
+
     T_FOR,
     T_IF,
     T_ELSE,
@@ -62,8 +63,10 @@ typedef enum {
     T_MODULO,
 
     T_TRUE,
-    T_FALSE
+    T_FALSE,
 
+    T_INTEGER_LIT,
+    T_REAL_LIT,
 } SLTokenType;
 
 typedef struct {

@@ -43,13 +43,25 @@ bool SLAppendKeywordOrID(SLTokenArray* array, char buffer[128], int length, int 
 
     // TODO: Add all keywords
 
-    if (strcmp(buffer, "routine") == 0) {
+    if (isdigit(buffer[0])) {
+        if (strchr(buffer, '.')) {
+            token.type = T_REAL_LIT;
+            if (DEBUG) {
+                SLTokenDebugPrint("REAL NUMBER", buffer, line, position);
+            }
+        } else {
+            token.type = T_INTEGER_LIT;
+            if (DEBUG) {
+                SLTokenDebugPrint("INTEGER NUMBER", buffer, line, position);
+            }
+        }
+    } else if (strcmp(buffer, "routine") == 0) {
         token.type = T_ROUTINE;
 
         if (DEBUG) {
             SLTokenDebugPrint("ROUTINE", buffer, line, position);
         }
-    
+
     } else if (strcmp(buffer, "integer") == 0) {
         token.type = T_INTEGER;
 
