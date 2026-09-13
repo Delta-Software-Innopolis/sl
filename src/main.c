@@ -1,10 +1,9 @@
-#include <stdio.h>
 #include <llvm-c/Core.h>
+#include <stdio.h>
 
 #include "sl.h"
 
 int main(int argc, char** argv) {
-
     if (argc == 1) {
         fprintf(stderr, "sl: fatal error: no input files\n");
         return 0;

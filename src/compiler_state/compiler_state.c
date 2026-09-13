@@ -1,6 +1,5 @@
 #include "compiler_state.h"
 
-
 SLCompilerState* SLInitCompilerState(char* filename) {
     SLCompilerState* state = malloc(sizeof(*state));
     if (state == NULL) {
@@ -37,12 +36,7 @@ SLCompilerState* SLInitCompilerState(char* filename) {
         return NULL;
     }
 
-    size_t bytes_read = fread(
-        state->text,
-        1,
-        (size_t)file_size,
-        state->input
-    );
+    size_t bytes_read = fread(state->text, 1, (size_t)file_size, state->input);
 
     if (bytes_read != (size_t)file_size) {
         free(state->text);

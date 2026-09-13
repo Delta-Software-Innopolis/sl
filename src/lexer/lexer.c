@@ -1,10 +1,13 @@
 #include "lexer.h"
 
-bool SLResetBuffer(SLTokenArray* tokens, char buffer[128], int* bufWriter, int position, int line, char** start, bool* readingID, bool* readingInteger, bool *readingReal) {
+bool SLResetBuffer(SLTokenArray* tokens, char buffer[128], int* bufWriter,
+                   int position, int line, char** start, bool* readingID,
+                   bool* readingInteger, bool* readingReal) {
     if (!(*readingID) && !(*readingInteger) && !(*readingReal)) return true;
 
     buffer[*bufWriter] = '\0';
-    if (!SLAppendKeywordOrID(tokens, buffer, *bufWriter, position, line, *start)) {
+    if (!SLAppendKeywordOrID(tokens, buffer, *bufWriter, position, line,
+                             *start)) {
         return false;
     }
     *bufWriter = 0;
@@ -17,7 +20,6 @@ bool SLResetBuffer(SLTokenArray* tokens, char buffer[128], int* bufWriter, int p
 }
 
 bool SLScanText(SLCompilerState* state) {
-
     bool readingID;
     bool readingInteger;
     bool readingReal;
@@ -41,10 +43,13 @@ bool SLScanText(SLCompilerState* state) {
         }
 
         char c = state->text[i];
-        char nc = state->text[i + 1]; // if at last symbol it will read null character so its safe
+        char nc = state->text[i + 1];  // if at last symbol it will read null
+                                       // character so its safe
 
         if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
-            if (!SLResetBuffer(&state->tokens, buffer, &bufWriter, position, line, &start, &readingID, &readingInteger, &readingReal)) {
+            if (!SLResetBuffer(&state->tokens, buffer, &bufWriter, position,
+                               line, &start, &readingID, &readingInteger,
+                               &readingReal)) {
                 return false;
             }
 
@@ -75,7 +80,8 @@ bool SLScanText(SLCompilerState* state) {
             continue;
         }
 
-        if ((isdigit(c) && (readingInteger || readingReal)) || (c == '.' && nc != '.' && readingInteger)) {
+        if ((isdigit(c) && (readingInteger || readingReal)) ||
+            (c == '.' && nc != '.' && readingInteger)) {
             buffer[bufWriter++] = c;
             position--;
             if (c == '.') {
@@ -88,7 +94,9 @@ bool SLScanText(SLCompilerState* state) {
             position--;
             continue;
         } else {
-            if (!SLResetBuffer(&state->tokens, buffer, &bufWriter, position, line, &start, &readingID, &readingInteger, &readingReal)) {
+            if (!SLResetBuffer(&state->tokens, buffer, &bufWriter, position,
+                               line, &start, &readingID, &readingInteger,
+                               &readingReal)) {
                 return false;
             }
             position = realPosition;
@@ -108,7 +116,8 @@ bool SLScanText(SLCompilerState* state) {
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("ASSIGNMENT", token.start, token.length, line, position);
+                        SLTokenDebugPrintSlice("ASSIGNMENT", token.start,
+                                               token.length, line, position);
                     }
 
                     skipNextToken = true;
@@ -120,7 +129,8 @@ bool SLScanText(SLCompilerState* state) {
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("COLON", token.start, token.length, line, position);
+                        SLTokenDebugPrintSlice("COLON", token.start,
+                                               token.length, line, position);
                     }
                 }
 
@@ -135,7 +145,8 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("LEFT PARANTHESIS", token.start, token.length, line, position);
+                    SLTokenDebugPrintSlice("LEFT PARANTHESIS", token.start,
+                                           token.length, line, position);
                 }
 
                 break;
@@ -149,7 +160,8 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("RIGHT PARANTHESIS", token.start, token.length, line, position);
+                    SLTokenDebugPrintSlice("RIGHT PARANTHESIS", token.start,
+                                           token.length, line, position);
                 }
 
                 break;
@@ -163,7 +175,8 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("COMMA", token.start, token.length, line, position);
+                    SLTokenDebugPrintSlice("COMMA", token.start, token.length,
+                                           line, position);
                 }
 
                 break;
@@ -177,7 +190,8 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("SEMICOLON", token.start, token.length, line, position);
+                    SLTokenDebugPrintSlice("SEMICOLON", token.start,
+                                           token.length, line, position);
                 }
 
                 break;
@@ -192,7 +206,8 @@ bool SLScanText(SLCompilerState* state) {
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("RANGE", token.start, token.length, line, position);
+                        SLTokenDebugPrintSlice("RANGE", token.start,
+                                               token.length, line, position);
                     }
 
                     skipNextToken = true;
@@ -204,7 +219,8 @@ bool SLScanText(SLCompilerState* state) {
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("DOT", token.start, token.length, line, position);
+                        SLTokenDebugPrintSlice("DOT", token.start, token.length,
+                                               line, position);
                     }
                 }
 
@@ -219,7 +235,8 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("LEFT BRACKET", token.start, token.length, line, position);
+                    SLTokenDebugPrintSlice("LEFT BRACKET", token.start,
+                                           token.length, line, position);
                 }
 
                 break;
@@ -233,7 +250,8 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("RIGHT BRACKET", token.start, token.length, line, position);
+                    SLTokenDebugPrintSlice("RIGHT BRACKET", token.start,
+                                           token.length, line, position);
                 }
 
                 break;
@@ -248,7 +266,8 @@ bool SLScanText(SLCompilerState* state) {
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("INLINE FUNC", token.start, token.length, line, position);
+                        SLTokenDebugPrintSlice("INLINE FUNC", token.start,
+                                               token.length, line, position);
                     }
 
                     skipNextToken = true;
@@ -260,7 +279,8 @@ bool SLScanText(SLCompilerState* state) {
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("EQUAL", token.start, token.length, line, position);
+                        SLTokenDebugPrintSlice("EQUAL", token.start,
+                                               token.length, line, position);
                     }
                 }
 
@@ -276,7 +296,8 @@ bool SLScanText(SLCompilerState* state) {
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("NOT EQUAL", token.start, token.length, line, position);
+                        SLTokenDebugPrintSlice("NOT EQUAL", token.start,
+                                               token.length, line, position);
                     }
 
                     skipNextToken = true;
@@ -288,7 +309,8 @@ bool SLScanText(SLCompilerState* state) {
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("DIVIDE", token.start, token.length, line, position);
+                        SLTokenDebugPrintSlice("DIVIDE", token.start,
+                                               token.length, line, position);
                     }
                 }
 
@@ -304,7 +326,8 @@ bool SLScanText(SLCompilerState* state) {
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("LESS OR EQUAL", token.start, token.length, line, position);
+                        SLTokenDebugPrintSlice("LESS OR EQUAL", token.start,
+                                               token.length, line, position);
                     }
 
                     skipNextToken = true;
@@ -316,7 +339,8 @@ bool SLScanText(SLCompilerState* state) {
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("LESS", token.start, token.length, line, position);
+                        SLTokenDebugPrintSlice("LESS", token.start,
+                                               token.length, line, position);
                     }
                 }
 
@@ -332,7 +356,8 @@ bool SLScanText(SLCompilerState* state) {
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("GREATER OR EQUAL", token.start, token.length, line, position);
+                        SLTokenDebugPrintSlice("GREATER OR EQUAL", token.start,
+                                               token.length, line, position);
                     }
 
                     skipNextToken = true;
@@ -344,7 +369,8 @@ bool SLScanText(SLCompilerState* state) {
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("GREATER", token.start, token.length, line, position);
+                        SLTokenDebugPrintSlice("GREATER", token.start,
+                                               token.length, line, position);
                     }
                 }
 
@@ -359,7 +385,8 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("PLUS", token.start, token.length, line, position);
+                    SLTokenDebugPrintSlice("PLUS", token.start, token.length,
+                                           line, position);
                 }
 
                 break;
@@ -373,7 +400,8 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("MINUS", token.start, token.length, line, position);
+                    SLTokenDebugPrintSlice("MINUS", token.start, token.length,
+                                           line, position);
                 }
 
                 break;
@@ -387,7 +415,8 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("MULTIPLY", token.start, token.length, line, position);
+                    SLTokenDebugPrintSlice("MULTIPLY", token.start,
+                                           token.length, line, position);
                 }
 
                 break;
@@ -401,7 +430,8 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("MODULO", token.start, token.length, line, position);
+                    SLTokenDebugPrintSlice("MODULO", token.start, token.length,
+                                           line, position);
                 }
 
                 break;
@@ -411,13 +441,8 @@ bool SLScanText(SLCompilerState* state) {
                 break;
         }
 
-
         // TODO: Implement skipping comments!!1!1
-
     }
 
     return true;
-
 }
-
-

@@ -19,5 +19,4 @@ typedef struct {
 
 SLCompilerState* SLInitCompilerState(char* filename);
 
-
 #endif

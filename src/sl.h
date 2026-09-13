@@ -6,4 +6,4 @@
 #include "compiler_state/compiler_state.h"
 #include "lexer/lexer.h"
 
-#endif //SL_H
+#endif  // SL_H
