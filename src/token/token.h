@@ -39,6 +39,7 @@ typedef enum {
     T_LOOP,
     T_RETURN,
     T_END,
+    T_THEN,
 
     T_INLINE_FUNC,
     T_REVERSE,

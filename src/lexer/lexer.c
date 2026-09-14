@@ -56,7 +56,8 @@ bool SLScanText(SLCompilerState* state) {
                 token.type = T_NEWLINE;
                 SLTokenArrayPush(&state->tokens, token);
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("NEW LINE", token.start, token.length, line, position);
+                    SLTokenDebugPrintSlice("NEW LINE", token.start,
+                                           token.length, line, position);
                 }
 
                 comment = false;
@@ -83,7 +84,8 @@ bool SLScanText(SLCompilerState* state) {
                 token.type = T_NEWLINE;
                 SLTokenArrayPush(&state->tokens, token);
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("NEW LINE", token.start, token.length, line, position);
+                    SLTokenDebugPrintSlice("NEW LINE", token.start,
+                                           token.length, line, position);
                 }
 
                 line++;

@@ -9,12 +9,12 @@ void SLTokenDebugPrint(const char* token_type, char value[128], int line,
 void SLTokenDebugPrintSlice(const char* token_type, char* start, int length,
                             int line, int position) {
     if (*start == '\n') {
-        printf("Token Type: %s, value: \\n, line: %d, position: %d\n", token_type,
-               line, position);
+        printf("Token Type: %s, value: \\n, line: %d, position: %d\n",
+               token_type, line, position);
 
     } else {
-        printf("Token Type: %s, value: %.*s, line: %d, position: %d\n", token_type,
-               length, start, line, position);
+        printf("Token Type: %s, value: %.*s, line: %d, position: %d\n",
+               token_type, length, start, line, position);
     }
 }
 
@@ -101,7 +101,7 @@ bool SLAppendKeywordOrID(SLTokenArray* array, char buffer[128], int length,
     } else if (strcmp(buffer, "real") == 0) {
         token.type = T_REAL;
 
-         if (DEBUG) {
+        if (DEBUG) {
             SLTokenDebugPrint("REAL", buffer, line, position);
         }
     } else if (strcmp(buffer, "array") == 0) {
@@ -199,6 +199,12 @@ bool SLAppendKeywordOrID(SLTokenArray* array, char buffer[128], int length,
 
         if (DEBUG) {
             SLTokenDebugPrint("FALSE", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "then") == 0) {
+        token.type = T_THEN;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("THEN", buffer, line, position);
         }
     } else {
         token.type = T_IDENTIFIER;
