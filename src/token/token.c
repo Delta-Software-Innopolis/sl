@@ -92,6 +92,114 @@ bool SLAppendKeywordOrID(SLTokenArray* array, char buffer[128], int length,
         if (DEBUG) {
             SLTokenDebugPrint("FOR", buffer, line, position);
         }
+    } else if (strcmp(buffer, "boolean") == 0) {
+        token.type = T_BOOLEAN;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("BOOLEAN", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "real") == 0) {
+        token.type = T_REAL;
+
+         if (DEBUG) {
+            SLTokenDebugPrint("REAL", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "array") == 0) {
+        token.type = T_ARRAY;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("ARRAY", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "record") == 0) {
+        token.type = T_RECORD;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("RECORD", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "if") == 0) {
+        token.type = T_IF;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("IF", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "else") == 0) {
+        token.type = T_ELSE;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("ELSE", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "while") == 0) {
+        token.type = T_WHILE;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("WHILE", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "loop") == 0) {
+        token.type = T_LOOP;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("LOOP", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "return") == 0) {
+        token.type = T_RETURN;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("RETURN", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "end") == 0) {
+        token.type = T_END;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("END", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "reverse") == 0) {
+        token.type = T_REVERSE;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("REVERSE", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "in") == 0) {
+        token.type = T_IN;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("IN", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "not") == 0) {
+        token.type = T_NOT;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("NOT", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "or") == 0) {
+        token.type = T_OR;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("OR", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "and") == 0) {
+        token.type = T_AND;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("AND", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "xor") == 0) {
+        token.type = T_XOR;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("XOR", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "true") == 0) {
+        token.type = T_TRUE;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("TRUE", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "false") == 0) {
+        token.type = T_FALSE;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("FALSE", buffer, line, position);
+        }
     } else {
         token.type = T_IDENTIFIER;
         token.start = start;
