@@ -53,8 +53,6 @@ bool SLAppendKeywordOrID(SLTokenArray* array, char buffer[128], int length,
     token.line = line;
     token.position = position;
 
-    // TODO: Add all keywords
-
     if (isdigit(buffer[0])) {
         if (strchr(buffer, '.')) {
             token.type = T_REAL_LIT;
@@ -205,6 +203,12 @@ bool SLAppendKeywordOrID(SLTokenArray* array, char buffer[128], int length,
 
         if (DEBUG) {
             SLTokenDebugPrint("THEN", buffer, line, position);
+        }
+    } else if (strcmp(buffer, "type") == 0) {
+        token.type = T_TYPE;
+
+        if (DEBUG) {
+            SLTokenDebugPrint("TYPE", buffer, line, position);
         }
     } else {
         token.type = T_IDENTIFIER;

@@ -476,8 +476,6 @@ bool SLScanText(SLCompilerState* state) {
             default:
                 break;
         }
-
-        // TODO: Implement skipping comments!!1!1
     }
 
     return true;

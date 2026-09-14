@@ -30,6 +30,7 @@ typedef enum {
     T_REAL,
     T_ARRAY,
     T_RECORD,
+    T_TYPE,
 
     T_FOR,
     T_IF,
