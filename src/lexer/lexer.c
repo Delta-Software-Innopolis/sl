@@ -32,6 +32,7 @@ bool SLScanText(SLCompilerState* state) {
     int realPosition = 0;
 
     bool skipNextToken = false;
+    bool comment = false;
 
     for (int i = 0; i < state->text_size; i++) {
         realPosition++;
@@ -45,6 +46,15 @@ bool SLScanText(SLCompilerState* state) {
         char c = state->text[i];
         char nc = state->text[i + 1];  // if at last symbol it will read null
                                        // character so its safe
+        if (comment) {
+            if (c == '\n') {
+                comment = false;
+                line++;
+                position = 0;
+                realPosition = 0;
+            }
+            continue;
+        }
 
         if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
             if (!SLResetBuffer(&state->tokens, buffer, &bufWriter, position,
@@ -301,6 +311,8 @@ bool SLScanText(SLCompilerState* state) {
                     }
 
                     skipNextToken = true;
+                } else if (nc == '/') {
+                    comment = true;
                 } else {
                     token.start = &state->text[i];
                     token.length = 1;
