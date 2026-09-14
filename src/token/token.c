@@ -8,8 +8,14 @@ void SLTokenDebugPrint(const char* token_type, char value[128], int line,
 
 void SLTokenDebugPrintSlice(const char* token_type, char* start, int length,
                             int line, int position) {
-    printf("Token Type: %s, value: %.*s, line: %d, position: %d\n", token_type,
-           length, start, line, position);
+    if (*start == '\n') {
+        printf("Token Type: %s, value: \\n, line: %d, position: %d\n", token_type,
+               line, position);
+
+    } else {
+        printf("Token Type: %s, value: %.*s, line: %d, position: %d\n", token_type,
+               length, start, line, position);
+    }
 }
 
 bool SLTokenArrayPush(SLTokenArray* array, SLToken token) {

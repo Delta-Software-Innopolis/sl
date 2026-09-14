@@ -21,6 +21,7 @@ typedef enum {
     T_RPAR,
     T_LBRACKET,
     T_RBRACKET,
+    T_NEWLINE,
 
     T_VAR,
     T_IDENTIFIER,
