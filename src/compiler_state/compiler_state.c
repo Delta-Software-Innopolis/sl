@@ -7,6 +7,7 @@ SLCompilerState* SLInitCompilerState(char* filename) {
     }
 
     state->input = fopen(filename, "rb");
+    state->filename = filename;
     if (state->input == NULL) {
         free(state);
 

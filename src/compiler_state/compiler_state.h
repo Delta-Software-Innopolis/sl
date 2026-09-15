@@ -10,6 +10,7 @@
 
 typedef struct {
     FILE* input;
+    char* filename;
     char* text;
     int text_size;
 

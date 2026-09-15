@@ -486,6 +486,8 @@ bool SLScanText(SLCompilerState* state) {
             }
 
             default:
+                printf("sl: %s:%d:%d: lexical error: unexpected token %c\n", state->filename, line, position, c);
+                return false;
                 break;
         }
     }
