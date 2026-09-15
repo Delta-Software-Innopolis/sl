@@ -19,6 +19,18 @@ bool SLResetBuffer(SLTokenArray* tokens, char buffer[128], int* bufWriter,
     return true;
 }
 
+bool SLPushToBuffer(char buffer[128], char symbol, int* writer) {
+    if (*writer + 1 >= 128) {
+        buffer[127] = '\0';
+        fprintf(stderr, "Identifier '%.64s...' is too long\n", buffer);
+        return false;
+    }
+
+    buffer[(*writer)++] = symbol;
+
+    return true;
+}
+
 bool SLScanText(SLCompilerState* state) {
     bool readingID;
     bool readingInteger;
@@ -101,7 +113,7 @@ bool SLScanText(SLCompilerState* state) {
             position--;
 
             start = &state->text[i];
-            buffer[bufWriter++] = c;
+            if (!SLPushToBuffer(buffer, c, &bufWriter)) return false;
             continue;
         }
 
@@ -110,13 +122,13 @@ bool SLScanText(SLCompilerState* state) {
             position--;
 
             start = &state->text[i];
-            buffer[bufWriter++] = c;
+            if (!SLPushToBuffer(buffer, c, &bufWriter)) return false;
             continue;
         }
 
         if ((isdigit(c) && (readingInteger || readingReal)) ||
             (c == '.' && nc != '.' && readingInteger)) {
-            buffer[bufWriter++] = c;
+            if (!SLPushToBuffer(buffer, c, &bufWriter)) return false;
             position--;
             if (c == '.') {
                 readingInteger = false;
@@ -124,7 +136,7 @@ bool SLScanText(SLCompilerState* state) {
             }
             continue;
         } else if ((isalnum(c) || c == '_') && readingID) {
-            buffer[bufWriter++] = c;
+            if (!SLPushToBuffer(buffer, c, &bufWriter)) return false;
             position--;
             continue;
         } else {
