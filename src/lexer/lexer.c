@@ -50,14 +50,14 @@ bool SLScanText(SLCompilerState* state) {
             if (c == '\n') {
                 SLToken token;
                 token.line = line;
-                token.position = position;
+                token.position = realPosition;
                 token.start = &state->text[i];
                 token.length = 1;
                 token.type = T_NEWLINE;
                 SLTokenArrayPush(&state->tokens, token);
                 if (DEBUG) {
                     SLTokenDebugPrintSlice("NEW LINE", token.start,
-                                           token.length, line, position);
+                                           token.length, line, realPosition);
                 }
 
                 comment = false;
@@ -78,14 +78,14 @@ bool SLScanText(SLCompilerState* state) {
             if (c == '\n') {
                 SLToken token;
                 token.line = line;
-                token.position = position;
+                token.position = realPosition;
                 token.start = &state->text[i];
                 token.length = 1;
                 token.type = T_NEWLINE;
                 SLTokenArrayPush(&state->tokens, token);
                 if (DEBUG) {
                     SLTokenDebugPrintSlice("NEW LINE", token.start,
-                                           token.length, line, position);
+                                           token.length, line, realPosition);
                 }
 
                 line++;
