@@ -1,0 +1,65 @@
+program = { simple_decl | routine_decl };
+
+(* -------- declarations -------- *)
+
+simple_decl = var_decl | type_decl;
+
+var_decl      = "var", id, var_decl_tail;
+var_decl_tail = ":", type, [ "=", expr ]
+              | "=", expr;
+
+type_decl = "type", id, "=", type;
+
+type           = primitive_type | user_type | id;
+primitive_type = "integer" | "real" | "boolean";
+user_type      = array_type | record_type;
+array_type     = "array", "[", [ expr ], "]", type;
+record_type    = "record", { var_decl }, "end";
+
+routine_decl   = routine_header, [ routine_body ];
+routine_header = "routine", id, "(", [ params ], ")", [ ":", type ];
+routine_body   = "=", body, "end"
+               | "=>", expr;
+params         = param_decl, { ",", param_decl };
+param_decl     = id, ":", type;
+
+body = { simple_decl | statement };
+
+(* -------- statements -------- *)
+
+statement
+  = id_statement
+  | while_loop
+  | for_loop
+  | if_statement
+  | return_statement;
+
+id_statement    = id, ( call_tail | modifiable_tail, ":=", expr );
+call_tail       = "(", [ expr, { ",", expr } ], ")";
+modifiable_tail = { ( ".", id ) | ( "[", expr, "]" ) };
+
+while_loop      = "while", expr, "loop", body, "end";
+for_loop        = "for", id, "in", range, [ "reverse" ], "loop", body, "end";
+range           = expr, [ "..", expr ];
+if_statement    = "if", expr, "then", body, [ "else", body ], "end";
+return_statement = "return", [ expr ];
+
+(* -------- expressions, precedence low to high -------- *)
+
+expr     = relation, { ( "and" | "or" | "xor" ), relation };
+relation = simple, [ ( "<" | "<=" | ">" | ">=" | "=" | "/=" ), simple ];
+simple   = factor, { ( "+" | "-" ), factor };
+factor   = summand, { ( "*" | "/" | "%" ), summand };
+summand  = unary;
+unary    = ( sign | "not" ), unary | primary;
+sign     = "+" | "-";
+
+primary
+  = int_lit
+  | real_lit
+  | boolean_lit
+  | id_primary
+  | "(", expr, ")";
+
+id_primary  = id, ( call_tail | modifiable_tail );
+boolean_lit = "true" | "false";
