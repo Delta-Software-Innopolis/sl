@@ -19,5 +19,17 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    SLTokenReader* reader = SLInitTokenReader(state);
+
+    if (reader == NULL) {
+        return 1;
+    }
+
+    SLExpr* expr = SLParseExpr(reader);
+
+    SLExprDebugPrint(expr);
+
+    free(state);
+
     return 0;
 }

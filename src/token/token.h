@@ -9,76 +9,84 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DEBUG 1
+#define DEBUG 0
+
+typedef struct {
+    char* start;
+    size_t length;
+} SLSlice;
+
+typedef struct {
+    int line;
+    int position;
+} SLTokenPosition;
 
 typedef enum {
-    T_COLON,
-    T_SEMICOLON,
-    T_ASSIGN,
-    T_DOT,
-    T_COMMA,
-    T_LPAR,
-    T_RPAR,
-    T_LBRACKET,
-    T_RBRACKET,
-    T_NEWLINE,
+    SL_TOK_COLON,
+    SL_TOK_SEMICOLON,
+    SL_TOK_ASSIGN,
+    SL_TOK_DOT,
+    SL_TOK_COMMA,
+    SL_TOK_LPAR,
+    SL_TOK_RPAR,
+    SL_TOK_LBRACKET,
+    SL_TOK_RBRACKET,
+    SL_TOK_NEWLINE,
 
-    T_VAR,
-    T_IDENTIFIER,
-    T_INTEGER,
-    T_BOOLEAN,
-    T_REAL,
-    T_ARRAY,
-    T_RECORD,
-    T_TYPE,
+    SL_TOK_VAR,
+    SL_TOK_IDENTIFIER,
+    SL_TOK_INTEGER,
+    SL_TOK_BOOLEAN,
+    SL_TOK_REAL,
+    SL_TOK_ARRAY,
+    SL_TOK_RECORD,
+    SL_TOK_TYPE,
 
-    T_FOR,
-    T_IF,
-    T_ELSE,
-    T_WHILE,
-    T_ROUTINE,
-    T_LOOP,
-    T_RETURN,
-    T_END,
-    T_THEN,
+    SL_TOK_FOR,
+    SL_TOK_IF,
+    SL_TOK_ELSE,
+    SL_TOK_WHILE,
+    SL_TOK_ROUTINE,
+    SL_TOK_LOOP,
+    SL_TOK_RETURN,
+    SL_TOK_END,
+    SL_TOK_THEN,
 
-    T_INLINE_FUNC,
-    T_REVERSE,
-    T_RANGE,
-    T_IN,
+    SL_TOK_INLINE_FUNC,
+    SL_TOK_REVERSE,
+    SL_TOK_RANGE,
+    SL_TOK_IN,
 
-    T_EQUAL,
-    T_NOT_EQ,
-    T_LESS,
-    T_LESS_EQ,
-    T_GREATER,
-    T_GREATER_EQ,
+    SL_TOK_EQUAL,
+    SL_TOK_NOT_EQ,
+    SL_TOK_LESS,
+    SL_TOK_LESS_EQ,
+    SL_TOK_GREATER,
+    SL_TOK_GREATER_EQ,
 
-    T_NOT,
-    T_OR,
-    T_AND,
-    T_XOR,
+    SL_TOK_NOT,
+    SL_TOK_OR,
+    SL_TOK_AND,
+    SL_TOK_XOR,
 
-    T_PLUS,
-    T_MINUS,
-    T_MULTIPLY,
-    T_DIVIDE,
-    T_MODULO,
+    SL_TOK_PLUS,
+    SL_TOK_MINUS,
+    SL_TOK_MULTIPLY,
+    SL_TOK_DIVIDE,
+    SL_TOK_MODULO,
 
-    T_TRUE,
-    T_FALSE,
+    SL_TOK_TRUE,
+    SL_TOK_FALSE,
 
-    T_INTEGER_LIT,
-    T_REAL_LIT,
+    SL_TOK_INTEGER_LIT,
+    SL_TOK_REAL_LIT,
 } SLTokenType;
 
 typedef struct {
     SLTokenType type;
 
-    int line, position;
-
-    char* start;
-    int length;
+    SLTokenPosition position;
+    SLSlice value;
 
 } SLToken;
 

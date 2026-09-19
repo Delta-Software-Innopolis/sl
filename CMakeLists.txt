@@ -19,6 +19,9 @@ add_executable(sl
     src/token/token.h
     src/token/token.c
 
+    src/parser/parser.h
+    src/parser/parser.c
+
     src/lexer/lexer.h
     src/lexer/lexer.c
 )

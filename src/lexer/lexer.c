@@ -32,9 +32,9 @@ bool SLPushToBuffer(char buffer[128], char symbol, int* writer) {
 }
 
 bool SLScanText(SLCompilerState* state) {
-    bool readingID;
-    bool readingInteger;
-    bool readingReal;
+    bool readingID = false;
+    bool readingInteger = false;
+    bool readingReal = false;
     char* start = NULL;
     char buffer[128];
     int bufWriter = 0;
@@ -61,15 +61,15 @@ bool SLScanText(SLCompilerState* state) {
         if (comment) {
             if (c == '\n') {
                 SLToken token;
-                token.line = line;
-                token.position = realPosition;
-                token.start = &state->text[i];
-                token.length = 1;
-                token.type = T_NEWLINE;
+                token.position.line = line;
+                token.position.position = realPosition;
+                token.value.start = &state->text[i];
+                token.value.length = 1;
+                token.type = SL_TOK_NEWLINE;
                 SLTokenArrayPush(&state->tokens, token);
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("NEW LINE", token.start,
-                                           token.length, line, realPosition);
+                    SLTokenDebugPrintSlice("NEW LINE", token.value.start,
+                                           token.value.length, line, realPosition);
                 }
 
                 comment = false;
@@ -89,15 +89,15 @@ bool SLScanText(SLCompilerState* state) {
 
             if (c == '\n') {
                 SLToken token;
-                token.line = line;
-                token.position = realPosition;
-                token.start = &state->text[i];
-                token.length = 1;
-                token.type = T_NEWLINE;
+                token.position.line = line;
+                token.position.position = realPosition;
+                token.value.start = &state->text[i];
+                token.value.length = 1;
+                token.type = SL_TOK_NEWLINE;
                 SLTokenArrayPush(&state->tokens, token);
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("NEW LINE", token.start,
-                                           token.length, line, realPosition);
+                    SLTokenDebugPrintSlice("NEW LINE", token.value.start,
+                                           token.value.length, line, realPosition);
                 }
 
                 line++;
@@ -149,34 +149,34 @@ bool SLScanText(SLCompilerState* state) {
         }
 
         SLToken token;
-        token.line = line;
-        token.position = position;
+        token.position.line = line;
+        token.position.position = position;
 
         switch (c) {
             case ':': {
                 if (nc == '=') {
-                    token.start = &state->text[i];
-                    token.length = 2;
-                    token.type = T_ASSIGN;
+                    token.value.start = &state->text[i];
+                    token.value.length = 2;
+                    token.type = SL_TOK_ASSIGN;
 
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("ASSIGNMENT", token.start,
-                                               token.length, line, position);
+                        SLTokenDebugPrintSlice("ASSIGNMENT", token.value.start,
+                                               token.value.length, line, position);
                     }
 
                     skipNextToken = true;
                 } else {
-                    token.start = &state->text[i];
-                    token.length = 1;
-                    token.type = T_COLON;
+                    token.value.start = &state->text[i];
+                    token.value.length = 1;
+                    token.type = SL_TOK_COLON;
 
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("COLON", token.start,
-                                               token.length, line, position);
+                        SLTokenDebugPrintSlice("COLON", token.value.start,
+                                               token.value.length, line, position);
                     }
                 }
 
@@ -184,44 +184,44 @@ bool SLScanText(SLCompilerState* state) {
             }
 
             case '(': {
-                token.start = &state->text[i];
-                token.length = 1;
-                token.type = T_LPAR;
+                token.value.start = &state->text[i];
+                token.value.length = 1;
+                token.type = SL_TOK_LPAR;
 
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("LEFT PARANTHESIS", token.start,
-                                           token.length, line, position);
+                    SLTokenDebugPrintSlice("LEFT PARANTHESIS", token.value.start,
+                                           token.value.length, line, position);
                 }
 
                 break;
             }
 
             case ')': {
-                token.start = &state->text[i];
-                token.length = 1;
-                token.type = T_RPAR;
+                token.value.start = &state->text[i];
+                token.value.length = 1;
+                token.type = SL_TOK_RPAR;
 
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("RIGHT PARANTHESIS", token.start,
-                                           token.length, line, position);
+                    SLTokenDebugPrintSlice("RIGHT PARANTHESIS", token.value.start,
+                                           token.value.length, line, position);
                 }
 
                 break;
             }
 
             case ',': {
-                token.start = &state->text[i];
-                token.length = 1;
-                token.type = T_COMMA;
+                token.value.start = &state->text[i];
+                token.value.length = 1;
+                token.type = SL_TOK_COMMA;
 
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("COMMA", token.start, token.length,
+                    SLTokenDebugPrintSlice("COMMA", token.value.start, token.value.length,
                                            line, position);
                 }
 
@@ -229,15 +229,15 @@ bool SLScanText(SLCompilerState* state) {
             }
 
             case ';': {
-                token.start = &state->text[i];
-                token.length = 1;
-                token.type = T_SEMICOLON;
+                token.value.start = &state->text[i];
+                token.value.length = 1;
+                token.type = SL_TOK_SEMICOLON;
 
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("SEMICOLON", token.start,
-                                           token.length, line, position);
+                    SLTokenDebugPrintSlice("SEMICOLON", token.value.start,
+                                           token.value.length, line, position);
                 }
 
                 break;
@@ -245,27 +245,27 @@ bool SLScanText(SLCompilerState* state) {
 
             case '.': {
                 if (nc == '.') {
-                    token.start = &state->text[i];
-                    token.length = 2;
-                    token.type = T_RANGE;
+                    token.value.start = &state->text[i];
+                    token.value.length = 2;
+                    token.type = SL_TOK_RANGE;
 
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("RANGE", token.start,
-                                               token.length, line, position);
+                        SLTokenDebugPrintSlice("RANGE", token.value.start,
+                                               token.value.length, line, position);
                     }
 
                     skipNextToken = true;
                 } else {
-                    token.start = &state->text[i];
-                    token.length = 1;
-                    token.type = T_DOT;
+                    token.value.start = &state->text[i];
+                    token.value.length = 1;
+                    token.type = SL_TOK_DOT;
 
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("DOT", token.start, token.length,
+                        SLTokenDebugPrintSlice("DOT", token.value.start, token.value.length,
                                                line, position);
                     }
                 }
@@ -274,30 +274,30 @@ bool SLScanText(SLCompilerState* state) {
             }
 
             case '[': {
-                token.start = &state->text[i];
-                token.length = 1;
-                token.type = T_LBRACKET;
+                token.value.start = &state->text[i];
+                token.value.length = 1;
+                token.type = SL_TOK_LBRACKET;
 
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("LEFT BRACKET", token.start,
-                                           token.length, line, position);
+                    SLTokenDebugPrintSlice("LEFT BRACKET", token.value.start,
+                                           token.value.length, line, position);
                 }
 
                 break;
             }
 
             case ']': {
-                token.start = &state->text[i];
-                token.length = 1;
-                token.type = T_RBRACKET;
+                token.value.start = &state->text[i];
+                token.value.length = 1;
+                token.type = SL_TOK_RBRACKET;
 
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("RIGHT BRACKET", token.start,
-                                           token.length, line, position);
+                    SLTokenDebugPrintSlice("RIGHT BRACKET", token.value.start,
+                                           token.value.length, line, position);
                 }
 
                 break;
@@ -305,28 +305,28 @@ bool SLScanText(SLCompilerState* state) {
 
             case '=': {
                 if (nc == '>') {
-                    token.start = &state->text[i];
-                    token.length = 2;
-                    token.type = T_INLINE_FUNC;
+                    token.value.start = &state->text[i];
+                    token.value.length = 2;
+                    token.type = SL_TOK_INLINE_FUNC;
 
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("INLINE FUNC", token.start,
-                                               token.length, line, position);
+                        SLTokenDebugPrintSlice("INLINE FUNC", token.value.start,
+                                               token.value.length, line, position);
                     }
 
                     skipNextToken = true;
                 } else {
-                    token.start = &state->text[i];
-                    token.length = 1;
-                    token.type = T_EQUAL;
+                    token.value.start = &state->text[i];
+                    token.value.length = 1;
+                    token.type = SL_TOK_EQUAL;
 
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("EQUAL", token.start,
-                                               token.length, line, position);
+                        SLTokenDebugPrintSlice("EQUAL", token.value.start,
+                                               token.value.length, line, position);
                     }
                 }
 
@@ -335,30 +335,30 @@ bool SLScanText(SLCompilerState* state) {
 
             case '/': {
                 if (nc == '=') {
-                    token.start = &state->text[i];
-                    token.length = 2;
-                    token.type = T_NOT_EQ;
+                    token.value.start = &state->text[i];
+                    token.value.length = 2;
+                    token.type = SL_TOK_NOT_EQ;
 
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("NOT EQUAL", token.start,
-                                               token.length, line, position);
+                        SLTokenDebugPrintSlice("NOT EQUAL", token.value.start,
+                                               token.value.length, line, position);
                     }
 
                     skipNextToken = true;
                 } else if (nc == '/') {
                     comment = true;
                 } else {
-                    token.start = &state->text[i];
-                    token.length = 1;
-                    token.type = T_DIVIDE;
+                    token.value.start = &state->text[i];
+                    token.value.length = 1;
+                    token.type = SL_TOK_DIVIDE;
 
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("DIVIDE", token.start,
-                                               token.length, line, position);
+                        SLTokenDebugPrintSlice("DIVIDE", token.value.start,
+                                               token.value.length, line, position);
                     }
                 }
 
@@ -367,28 +367,28 @@ bool SLScanText(SLCompilerState* state) {
 
             case '<': {
                 if (nc == '=') {
-                    token.start = &state->text[i];
-                    token.length = 2;
-                    token.type = T_LESS_EQ;
+                    token.value.start = &state->text[i];
+                    token.value.length = 2;
+                    token.type = SL_TOK_LESS_EQ;
 
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("LESS OR EQUAL", token.start,
-                                               token.length, line, position);
+                        SLTokenDebugPrintSlice("LESS OR EQUAL", token.value.start,
+                                               token.value.length, line, position);
                     }
 
                     skipNextToken = true;
                 } else {
-                    token.start = &state->text[i];
-                    token.length = 1;
-                    token.type = T_LESS;
+                    token.value.start = &state->text[i];
+                    token.value.length = 1;
+                    token.type = SL_TOK_LESS;
 
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("LESS", token.start,
-                                               token.length, line, position);
+                        SLTokenDebugPrintSlice("LESS", token.value.start,
+                                               token.value.length, line, position);
                     }
                 }
 
@@ -397,28 +397,28 @@ bool SLScanText(SLCompilerState* state) {
 
             case '>': {
                 if (nc == '=') {
-                    token.start = &state->text[i];
-                    token.length = 2;
-                    token.type = T_GREATER_EQ;
+                    token.value.start = &state->text[i];
+                    token.value.length = 2;
+                    token.type = SL_TOK_GREATER_EQ;
 
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("GREATER OR EQUAL", token.start,
-                                               token.length, line, position);
+                        SLTokenDebugPrintSlice("GREATER OR EQUAL", token.value.start,
+                                               token.value.length, line, position);
                     }
 
                     skipNextToken = true;
                 } else {
-                    token.start = &state->text[i];
-                    token.length = 1;
-                    token.type = T_GREATER;
+                    token.value.start = &state->text[i];
+                    token.value.length = 1;
+                    token.type = SL_TOK_GREATER;
 
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("GREATER", token.start,
-                                               token.length, line, position);
+                        SLTokenDebugPrintSlice("GREATER", token.value.start,
+                                               token.value.length, line, position);
                     }
                 }
 
@@ -426,14 +426,14 @@ bool SLScanText(SLCompilerState* state) {
             }
 
             case '+': {
-                token.start = &state->text[i];
-                token.length = 1;
-                token.type = T_PLUS;
+                token.value.start = &state->text[i];
+                token.value.length = 1;
+                token.type = SL_TOK_PLUS;
 
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("PLUS", token.start, token.length,
+                    SLTokenDebugPrintSlice("PLUS", token.value.start, token.value.length,
                                            line, position);
                 }
 
@@ -441,14 +441,14 @@ bool SLScanText(SLCompilerState* state) {
             }
 
             case '-': {
-                token.start = &state->text[i];
-                token.length = 1;
-                token.type = T_MINUS;
+                token.value.start = &state->text[i];
+                token.value.length = 1;
+                token.type = SL_TOK_MINUS;
 
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("MINUS", token.start, token.length,
+                    SLTokenDebugPrintSlice("MINUS", token.value.start, token.value.length,
                                            line, position);
                 }
 
@@ -456,29 +456,29 @@ bool SLScanText(SLCompilerState* state) {
             }
 
             case '*': {
-                token.start = &state->text[i];
-                token.length = 1;
-                token.type = T_MULTIPLY;
-
+                token.value.start = &state->text[i];
+                token.value.length = 1;
+                token.type = SL_TOK_MULTIPLY;
+                
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("MULTIPLY", token.start,
-                                           token.length, line, position);
+                    SLTokenDebugPrintSlice("MULTIPLY", token.value.start,
+                                           token.value.length, line, position);
                 }
 
                 break;
             }
 
             case '%': {
-                token.start = &state->text[i];
-                token.length = 1;
-                token.type = T_MODULO;
+                token.value.start = &state->text[i];
+                token.value.length = 1;
+                token.type = SL_TOK_MODULO;
 
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("MODULO", token.start, token.length,
+                    SLTokenDebugPrintSlice("MODULO", token.value.start, token.value.length,
                                            line, position);
                 }
 
@@ -490,6 +490,12 @@ bool SLScanText(SLCompilerState* state) {
                 return false;
                 break;
         }
+    }
+
+    if (!SLResetBuffer(&state->tokens, buffer, &bufWriter, position,
+                       line, &start, &readingID, &readingInteger,
+                       &readingReal)) {
+        return false;
     }
 
     return true;
