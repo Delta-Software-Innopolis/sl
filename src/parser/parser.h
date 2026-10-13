@@ -5,16 +5,39 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdarg.h>
+#include <stdint.h>
 
 #include "../compiler_state/compiler_state.h"
 #include "../token/token.h"
 
+#define SL_ERROR_MAX_TRACE 64
+
+typedef struct {
+    const char* file;
+    const char* func;
+    int line;
+} SLTraceFrame;
+
+typedef struct {
+    bool has_error;
+    char message[256];
+
+    const char* at;
+    size_t length;
+    SLTokenPosition position;
+
+    SLTraceFrame trace[SL_ERROR_MAX_TRACE];
+    size_t trace_count;
+    bool trace_truncated;
+} SLParseError;
 
 typedef struct SLTokenReader {
     int cursor;
     SLTokenArray* tokens;
 
     bool isEOF;
+    SLParseError error;
 } SLTokenReader;
 
 typedef struct SLExpr SLExpr;
@@ -256,6 +279,20 @@ bool SLParseCallTail(SLTokenReader* reader, SLExprArray* list);
 SLExpr* SLParseModifiableTail(SLTokenReader* reader, SLExpr* base);
 SLToken* SLParseSign(SLTokenReader* reader);
 
+void SLErrorRaise(SLTokenReader* r, SLToken* at, const char* file, int line,
+        const char* func, const char* fmt, ...);
+void SLErrorExpected(SLTokenReader* r, SLToken* found, const char* expected,
+        const char* file, int line, const char* func);
+void SLErrorTrace(SLTokenReader* r, const char* file, int line, const char* func);
+void SLErrorPrint(const SLParseError* e, FILE* out, const char* filename,
+        const char* source, size_t source_len);
+
+#define SL_RAISE(r, at, ...) SLErrorRaise((r), (at), __FILE__, __LINE__, __func__, __VA_ARGS__)
+#define SL_EXPECTED(r, found, what) SLErrorExpected((r), (found), (what), __FILE__, __LINE__, __func__)
+#define SL_TRACE(r) SLErrorTrace((r), __FILE__, __LINE__, __func__)
+
+#define SL_RETURN_TRACED(r, call) \
+    do { SLExpr* _res = (call); if (_res == NULL) SL_TRACE(r); return _res; } while (0)
 
 SLDecl* SLParseSimpleDecl(SLTokenReader* reader);
 SLDecl* SLParseVarDecl(SLTokenReader* reader);

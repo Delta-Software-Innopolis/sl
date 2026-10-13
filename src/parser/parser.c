@@ -7,6 +7,127 @@ static void SLFreeType(SLType* type);
 static void SLFreeDecl(SLDecl* decl);
 static void SLFreeStmt(SLStmt* stmt);
 
+static void SLErrorSetLocation(SLTokenReader* r, SLToken* at) {
+    SLParseError* e = &r->error;
+
+    if (at != NULL) {
+        e->at = at->value.start;
+        e->length = at->value.length;
+        e->position = at->position;
+    } else if (r->tokens->count > 0) {
+        SLToken* last = &r->tokens->items[r->tokens->count - 1];
+        e->at = last->value.start != NULL
+            ? last->value.start + last->value.length : NULL;
+        e->length = 1;
+        e->position = last->position;
+        e->position.position += (int) last->value.length;
+    } else {
+        e->at = NULL;
+        e->length = 1;
+        e->position = (SLTokenPosition) {0};
+    }
+}
+
+void SLErrorRaise(SLTokenReader* r, SLToken* at, const char* file, int line,
+                  const char* func, const char* fmt, ...) {
+    SLParseError* e = &r->error;
+    if (e->has_error) return;
+
+    e->has_error = true;
+    e->trace_count = 0;
+    e->trace_truncated = false;
+
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(e->message, sizeof e->message, fmt, args);
+    va_end(args);
+
+    SLErrorSetLocation(r, at);
+    SLErrorTrace(r, file, line, func);
+}
+
+void SLErrorExpected(SLTokenReader* r, SLToken* found, const char* expected,
+                     const char* file, int line, const char* func) {
+    if (found == NULL) {
+        SLErrorRaise(r, NULL, file, line, func,
+                     "expected %s, found end of input", expected);
+    } else if (found->type == SL_TOK_NEWLINE) {
+        SLErrorRaise(r, found, file, line, func,
+                     "expected %s, found end of line", expected);
+    } else if (found->value.start == NULL || found->value.length == 0) {
+        SLErrorRaise(r, found, file, line, func,
+                     "expected %s, found unexpected token", expected);
+    } else {
+        SLErrorRaise(r, found, file, line, func, "expected %s, found '%.*s'",
+                     expected, (int) found->value.length, found->value.start);
+    }
+}
+
+void SLErrorTrace(SLTokenReader* r, const char* file, int line, const char* func) {
+    SLParseError* e = &r->error;
+
+    if (!e->has_error) {
+
+        SLToken* cur = r->cursor < r->tokens->count
+            ? &r->tokens->items[r->cursor] : NULL;
+        SLErrorRaise(r, cur, file, line, func,
+                     "internal parser error: failure without diagnostic");
+        return;
+    }
+
+    if (e->trace_count < SL_ERROR_MAX_TRACE) {
+        e->trace[e->trace_count++] = (SLTraceFrame) {file, func, line};
+    } else {
+        e->trace_truncated = true;
+    }
+}
+
+void SLErrorPrint(const SLParseError* e, FILE* out, const char* filename,
+                  const char* source, size_t source_len) {
+    if (!e->has_error) return;
+    if (filename == NULL) filename = "<input>";
+
+    fprintf(out, "error: %s\n", e->message);
+
+    uintptr_t at = (uintptr_t) e->at;
+    uintptr_t base = (uintptr_t) source;
+    bool located = source != NULL && e->at != NULL
+                && at >= base && at <= base + source_len;
+
+    if (located) {
+        size_t offset = (size_t) (at - base);
+
+        size_t line_start = offset;
+        while (line_start > 0 && source[line_start - 1] != '\n') line_start--;
+        size_t line_end = offset;
+        while (line_end < source_len && source[line_end] != '\n'
+               && source[line_end] != '\r') line_end++;
+        size_t line_no = 1;
+        for (size_t i = 0; i < line_start; ++i) if (source[i] == '\n') line_no++;
+
+        fprintf(out, "  --> %s:%zu:%zu\n", filename, line_no, offset - line_start + 1);
+        fprintf(out, "   | %.*s\n", (int) (line_end - line_start), source + line_start);
+
+        fputs("   | ", out);
+        for (size_t i = line_start; i < offset; ++i)
+            fputc(source[i] == '\t' ? '\t' : ' ', out);
+        size_t carets = e->length > 0 ? e->length : 1;
+        if (line_end > offset && offset + carets > line_end) carets = line_end - offset;
+        for (size_t i = 0; i < carets; ++i) fputc('^', out);
+        fputc('\n', out);
+    } else {
+        fprintf(out, "  --> %s:%d:%d\n", filename, e->position.line, e->position.position);
+    }
+
+    fputs("\nParser traceback (most recent call last):\n", out);
+    if (e->trace_truncated) fputs("  ...\n", out);
+    for (size_t i = e->trace_count; i > 0; --i) {
+        const SLTraceFrame* f = &e->trace[i - 1];
+        fprintf(out, "  in %s (%s:%d)%s\n", f->func, f->file, f->line,
+                i == 1 ? "   <-- raised here" : "");
+    }
+}
+
 static void SLFreeExpr(SLExpr* expr) {
     if (expr == NULL) return;
 
@@ -162,7 +283,8 @@ bool SLExprArrayPush(SLExprArray* list, SLExpr* expr) {
 SLTokenReader* SLInitTokenReader(SLCompilerState* state) {
     if (state == NULL) return NULL;
 
-    SLTokenReader* reader = (SLTokenReader*) malloc(sizeof(SLTokenReader));
+    SLTokenReader* reader = (SLTokenReader*) calloc(1, sizeof(SLTokenReader));
+    if (reader == NULL) return NULL;
 
     reader->tokens = &state->tokens;
     reader->cursor = 0;
@@ -260,7 +382,7 @@ SLExpr* SLParseExpr(SLTokenReader* reader) {
 
     if (relation == NULL) {
         // TODO: Error
-
+        SL_TRACE(reader);
         return NULL;
     }
 
@@ -281,6 +403,8 @@ SLExpr* SLParseExpr(SLTokenReader* reader) {
 
     if (second_rel == NULL) {
         // TODO: Error and free relation
+        SL_TRACE(reader);
+        SLFreeExpr(relation);
         return NULL;
     }
 
@@ -302,6 +426,7 @@ SLExpr* SLParseRelation(SLTokenReader* reader) {
 
     if (simple == NULL) {
         // TODO: Error
+        SL_TRACE(reader);
         return NULL;
     }
 
@@ -325,6 +450,8 @@ SLExpr* SLParseRelation(SLTokenReader* reader) {
 
     if (second_simple == NULL) {
         // TODO: Error and free simple
+        SL_TRACE(reader);
+        SLFreeExpr(simple);
 
         return NULL;
     }
@@ -347,6 +474,7 @@ SLExpr* SLParseSimple(SLTokenReader* reader) {
 
     if (factor == NULL) {
         // TODO: Error
+        SL_TRACE(reader);
         return NULL;
     }
 
@@ -369,6 +497,8 @@ SLExpr* SLParseSimple(SLTokenReader* reader) {
 
         if (second_factor == NULL) {
             // TODO: Error and free factor
+            SL_TRACE(reader);
+            SLFreeExpr(ret == NULL ? factor : ret);
 
             return NULL;
         }
@@ -394,6 +524,7 @@ SLExpr* SLParseFactor(SLTokenReader* reader) {
 
     if (summand == NULL) {
         // TODO: Error
+        SL_TRACE(reader);
         return NULL;
     }
 
@@ -421,6 +552,8 @@ SLExpr* SLParseFactor(SLTokenReader* reader) {
 
         if (second_summand == NULL) {
             // TODO: Error and free first summand
+            SL_TRACE(reader);
+            SLFreeExpr(ret == NULL ? summand : ret);
 
             return NULL;
         }
@@ -436,6 +569,7 @@ SLExpr* SLParseFactor(SLTokenReader* reader) {
         newLeftPart->span.end = second_summand->span.end;
 
         ret = newLeftPart;
+
     }
 }
 
@@ -444,6 +578,7 @@ SLExpr* SLParseSummand(SLTokenReader* reader) {
 
     if (unary == NULL) {
         // TODO: Error
+        SL_TRACE(reader);
         return NULL;
     }
 
@@ -454,6 +589,7 @@ SLExpr* SLParseUnary(SLTokenReader* reader) {
     SLToken* unaryOp = SLGetNextToken(reader);
 
     if (unaryOp == NULL) {
+        SL_EXPECTED(reader, NULL, "expression");
         return NULL;
     }
 
@@ -461,13 +597,13 @@ SLExpr* SLParseUnary(SLTokenReader* reader) {
         && unaryOp->type != SL_TOK_MINUS
         && unaryOp->type != SL_TOK_NOT) {
         reader->cursor--;
-        return SLParsePrimary(reader);
+        SL_RETURN_TRACED(reader, SLParsePrimary(reader));
     }
 
     SLExpr* nextUnary = SLParseUnary(reader);
 
     if (nextUnary == NULL) {
-        // TODO: Error
+        SL_TRACE(reader);
         return NULL;
     }
     SLExpr* ret = (SLExpr*) malloc(sizeof(SLExpr));
@@ -489,6 +625,7 @@ SLExpr* SLParsePrimary(SLTokenReader* reader) {
 
     if (tok == NULL) {
         // TODO: Error
+        SL_EXPECTED(reader, NULL, "expression");
         return NULL;
     }
 
@@ -509,6 +646,7 @@ SLExpr* SLParsePrimary(SLTokenReader* reader) {
     } else if (tok->type == SL_TOK_IDENTIFIER) {
         free(ret);
         reader->cursor--;
+        SL_RETURN_TRACED(reader, SLParseIDPrimary(reader));
         return SLParseIDPrimary(reader);
     } else if (tok->type == SL_TOK_LPAR) {
         free(ret);
@@ -516,6 +654,7 @@ SLExpr* SLParsePrimary(SLTokenReader* reader) {
 
         if (subexpr == NULL) {
             // TODO: Error
+            SL_TRACE(reader);
             return NULL;
         }
 
@@ -523,12 +662,15 @@ SLExpr* SLParsePrimary(SLTokenReader* reader) {
 
         if (closePar == NULL || closePar->type != SL_TOK_RPAR) {
             // TODO: Error unclosed paranthesys
+            SL_EXPECTED(reader, closePar, "')'");
+            SLFreeExpr(subexpr);
             return NULL;
         }
 
         return subexpr;
     } else {
         free(ret);
+        SL_EXPECTED(reader, tok, "expression");
         return NULL;
     }
 
@@ -544,11 +686,13 @@ SLExpr* SLParseIDPrimary(SLTokenReader* reader) {
 
     if (id == NULL) {
         // TODO: Error
+        SL_EXPECTED(reader, id, "identifier");
         return NULL;
     }
 
     if (id->type != SL_TOK_IDENTIFIER) {
         // TODO: Error
+        SL_EXPECTED(reader, id, "identifier");
         return NULL;
     }
 
@@ -570,6 +714,7 @@ SLExpr* SLParseIDPrimary(SLTokenReader* reader) {
         ret->value.call.arguments = (SLExprArray){0};
 
         if (!SLParseCallTail(reader, &ret->value.call.arguments)) {
+            SL_TRACE(reader);
             SLFreeExpr(ret);
             return NULL;
         }
@@ -580,7 +725,7 @@ SLExpr* SLParseIDPrimary(SLTokenReader* reader) {
         return ret;
     }
 
-    return SLParseModifiableTail(reader, ret);
+    SL_RETURN_TRACED(reader, SLParseModifiableTail(reader, ret));
 }
 
 bool SLParseCallTail(SLTokenReader* reader, SLExprArray* list) {
@@ -588,12 +733,13 @@ bool SLParseCallTail(SLTokenReader* reader, SLExprArray* list) {
 
     if (lpar == NULL) {
         // TODO: Error
+        SL_EXPECTED(reader, lpar, "'('");
         return false;
     }
 
     if (lpar->type != SL_TOK_LPAR) {
         // TODO: Error
-
+        SL_EXPECTED(reader, lpar, "'('");
         reader->cursor--;
         return false;
     }
@@ -602,6 +748,7 @@ bool SLParseCallTail(SLTokenReader* reader, SLExprArray* list) {
 
     if (rpar == NULL) {
         // TODO: Error
+        SL_EXPECTED(reader, NULL, "argument or ')'");
 
         return false;
     }
@@ -616,11 +763,13 @@ bool SLParseCallTail(SLTokenReader* reader, SLExprArray* list) {
         SLExpr* arg = SLParseExpr(reader);
 
         if (arg == NULL) {
+            SL_TRACE(reader);
             return false;
         }
 
         if (!SLExprArrayPush(list, arg)) {
             // TODO: Error
+            SL_RAISE(reader, NULL, "out of memory while parsing call arguments");
             SLFreeExpr(arg);
             return false;
         }
@@ -628,6 +777,7 @@ bool SLParseCallTail(SLTokenReader* reader, SLExprArray* list) {
         SLToken* comma = SLGetNextToken(reader);
 
         if (comma == NULL) {
+            SL_EXPECTED(reader, comma, "',' or ')'");
             return false;
         }
 
@@ -636,6 +786,7 @@ bool SLParseCallTail(SLTokenReader* reader, SLExprArray* list) {
         }
 
         if (comma->type != SL_TOK_COMMA) {
+            SL_EXPECTED(reader, comma, "',' or ')'");
             return false;
         }
     }
@@ -656,12 +807,14 @@ SLExpr* SLParseModifiableTail(SLTokenReader* reader, SLExpr* base) {
 
             if (id == NULL) {
                 // TODO: Error
+                SL_EXPECTED(reader, id, "field name after '.'");
                 SLFreeExpr(base);
                 return NULL;
             }
 
             if (id->type != SL_TOK_IDENTIFIER) {
                 // TODO: Error
+                SL_EXPECTED(reader, id, "field name after '.'");
                 SLFreeExpr(base);
                 return NULL;
             }
@@ -684,12 +837,14 @@ SLExpr* SLParseModifiableTail(SLTokenReader* reader, SLExpr* base) {
 
             if (expr == NULL) {
                 // TODO: Error
+                SL_TRACE(reader);
                 SLFreeExpr(base);
                 return NULL;
             }
 
             SLToken* closeBracket = SLGetNextToken(reader);
             if (closeBracket == NULL || closeBracket->type != SL_TOK_RBRACKET) {
+                SL_EXPECTED(reader, closeBracket, "']'");
                 SLFreeExpr(expr);
                 SLFreeExpr(base);
                 return NULL;

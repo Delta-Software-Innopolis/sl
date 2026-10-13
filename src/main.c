@@ -27,7 +27,14 @@ int main(int argc, char** argv) {
 
     SLProgram* prog = SLParseProgram(reader);
 
+    if (expr == NULL) {
+        SLErrorPrint(&reader->error, stderr, state->filename,
+                     state->text, (size_t) state->text_size);
+        return 1;
+    }
+
     SLProgramDebugPrint(prog);
+
 
     free(state);
 
