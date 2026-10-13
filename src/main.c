@@ -25,9 +25,9 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    SLExpr* expr = SLParseExpr(reader);
+    SLProgram* prog = SLParseProgram(reader);
 
-    SLExprDebugPrint(expr);
+    SLProgramDebugPrint(prog);
 
     free(state);
 
