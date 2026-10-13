@@ -25,8 +25,6 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    SLProgram* prog = SLParseProgram(reader);
-
     SLProgram* program = SLParseProgram(reader);
     if (program == NULL) {
         SLErrorPrint(&reader->error, stderr, state->filename,
@@ -34,7 +32,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    SLProgramDebugPrint(prog);
+    SLProgramDebugPrint(program);
 
 
     free(state);
