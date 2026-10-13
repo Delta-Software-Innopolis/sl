@@ -313,11 +313,9 @@ SLToken* SLGetNextToken(SLTokenReader* reader) {
 }
 
 static SLToken* SLPeekToken(SLTokenReader* reader) {
-    if (reader == NULL || (size_t) reader->cursor >= reader->tokens->count) {
-        return NULL;
-    }
-
+    if (reader == NULL) return NULL;
     SLSkipNewlines(reader);
+    if ((size_t) reader->cursor >= reader->tokens->count) return NULL;
     return &reader->tokens->items[reader->cursor];
 }
 
@@ -327,6 +325,19 @@ static SLToken* SLMatchToken(SLTokenReader* reader, SLTokenType type) {
     reader->cursor++;
     return tok;
 }
+
+static SLToken* SLRequireToken(SLTokenReader* reader, SLTokenType type,
+                               const char* what, const char* file, int line,
+                               const char* func) {
+    SLToken* tok = SLMatchToken(reader, type);
+    if (tok == NULL) {
+        SLErrorExpected(reader, SLPeekToken(reader), what, file, line, func);
+    }
+    return tok;
+}
+
+#define SL_REQUIRE(r, type, what) \
+    SLRequireToken((r), (type), (what), __FILE__, __LINE__, __func__)
 
 static void SLSkipSemicolons(SLTokenReader* reader) {
     while (SLMatchToken(reader, SL_TOK_SEMICOLON) != NULL) {}
@@ -381,7 +392,6 @@ SLExpr* SLParseExpr(SLTokenReader* reader) {
     SLExpr* relation = SLParseRelation(reader);
 
     if (relation == NULL) {
-        // TODO: Error
         SL_TRACE(reader);
         return NULL;
     }
@@ -402,7 +412,6 @@ SLExpr* SLParseExpr(SLTokenReader* reader) {
     SLExpr* second_rel = SLParseExpr(reader);
 
     if (second_rel == NULL) {
-        // TODO: Error and free relation
         SL_TRACE(reader);
         SLFreeExpr(relation);
         return NULL;
@@ -425,7 +434,6 @@ SLExpr* SLParseRelation(SLTokenReader* reader) {
     SLExpr* simple = SLParseSimple(reader);
 
     if (simple == NULL) {
-        // TODO: Error
         SL_TRACE(reader);
         return NULL;
     }
@@ -449,7 +457,6 @@ SLExpr* SLParseRelation(SLTokenReader* reader) {
     SLExpr* second_simple = SLParseSimple(reader);
 
     if (second_simple == NULL) {
-        // TODO: Error and free simple
         SL_TRACE(reader);
         SLFreeExpr(simple);
 
@@ -473,7 +480,6 @@ SLExpr* SLParseSimple(SLTokenReader* reader) {
     SLExpr* factor = SLParseFactor(reader);
 
     if (factor == NULL) {
-        // TODO: Error
         SL_TRACE(reader);
         return NULL;
     }
@@ -496,7 +502,6 @@ SLExpr* SLParseSimple(SLTokenReader* reader) {
         SLExpr* second_factor = SLParseFactor(reader);
 
         if (second_factor == NULL) {
-            // TODO: Error and free factor
             SL_TRACE(reader);
             SLFreeExpr(ret == NULL ? factor : ret);
 
@@ -523,7 +528,6 @@ SLExpr* SLParseFactor(SLTokenReader* reader) {
     SLExpr* summand = SLParseSummand(reader);
 
     if (summand == NULL) {
-        // TODO: Error
         SL_TRACE(reader);
         return NULL;
     }
@@ -551,7 +555,6 @@ SLExpr* SLParseFactor(SLTokenReader* reader) {
         SLExpr* second_summand = SLParseSummand(reader);
 
         if (second_summand == NULL) {
-            // TODO: Error and free first summand
             SL_TRACE(reader);
             SLFreeExpr(ret == NULL ? summand : ret);
 
@@ -577,7 +580,6 @@ SLExpr* SLParseSummand(SLTokenReader* reader) {
     SLExpr* unary = SLParseUnary(reader);
 
     if (unary == NULL) {
-        // TODO: Error
         SL_TRACE(reader);
         return NULL;
     }
@@ -619,12 +621,10 @@ SLExpr* SLParseUnary(SLTokenReader* reader) {
 }
 
 SLExpr* SLParsePrimary(SLTokenReader* reader) {
-    // TODO: Parse ID Primary
 
     SLToken* tok = SLGetNextToken(reader);
 
     if (tok == NULL) {
-        // TODO: Error
         SL_EXPECTED(reader, NULL, "expression");
         return NULL;
     }
@@ -653,7 +653,6 @@ SLExpr* SLParsePrimary(SLTokenReader* reader) {
         SLExpr* subexpr = SLParseExpr(reader);
 
         if (subexpr == NULL) {
-            // TODO: Error
             SL_TRACE(reader);
             return NULL;
         }
@@ -661,7 +660,6 @@ SLExpr* SLParsePrimary(SLTokenReader* reader) {
         SLToken* closePar = SLGetNextToken(reader);
 
         if (closePar == NULL || closePar->type != SL_TOK_RPAR) {
-            // TODO: Error unclosed paranthesys
             SL_EXPECTED(reader, closePar, "')'");
             SLFreeExpr(subexpr);
             return NULL;
@@ -685,13 +683,11 @@ SLExpr* SLParseIDPrimary(SLTokenReader* reader) {
     SLToken* id = SLGetNextToken(reader);
 
     if (id == NULL) {
-        // TODO: Error
         SL_EXPECTED(reader, id, "identifier");
         return NULL;
     }
 
     if (id->type != SL_TOK_IDENTIFIER) {
-        // TODO: Error
         SL_EXPECTED(reader, id, "identifier");
         return NULL;
     }
@@ -732,13 +728,11 @@ bool SLParseCallTail(SLTokenReader* reader, SLExprArray* list) {
     SLToken* lpar = SLGetNextToken(reader);
 
     if (lpar == NULL) {
-        // TODO: Error
         SL_EXPECTED(reader, lpar, "'('");
         return false;
     }
 
     if (lpar->type != SL_TOK_LPAR) {
-        // TODO: Error
         SL_EXPECTED(reader, lpar, "'('");
         reader->cursor--;
         return false;
@@ -747,7 +741,6 @@ bool SLParseCallTail(SLTokenReader* reader, SLExprArray* list) {
     SLToken* rpar = SLGetNextToken(reader);
 
     if (rpar == NULL) {
-        // TODO: Error
         SL_EXPECTED(reader, NULL, "argument or ')'");
 
         return false;
@@ -768,7 +761,6 @@ bool SLParseCallTail(SLTokenReader* reader, SLExprArray* list) {
         }
 
         if (!SLExprArrayPush(list, arg)) {
-            // TODO: Error
             SL_RAISE(reader, NULL, "out of memory while parsing call arguments");
             SLFreeExpr(arg);
             return false;
@@ -806,14 +798,12 @@ SLExpr* SLParseModifiableTail(SLTokenReader* reader, SLExpr* base) {
             SLToken* id = SLGetNextToken(reader);
 
             if (id == NULL) {
-                // TODO: Error
                 SL_EXPECTED(reader, id, "field name after '.'");
                 SLFreeExpr(base);
                 return NULL;
             }
 
             if (id->type != SL_TOK_IDENTIFIER) {
-                // TODO: Error
                 SL_EXPECTED(reader, id, "field name after '.'");
                 SLFreeExpr(base);
                 return NULL;
@@ -836,7 +826,6 @@ SLExpr* SLParseModifiableTail(SLTokenReader* reader, SLExpr* base) {
             SLExpr* expr = SLParseExpr(reader);
 
             if (expr == NULL) {
-                // TODO: Error
                 SL_TRACE(reader);
                 SLFreeExpr(base);
                 return NULL;
@@ -892,7 +881,7 @@ SLType* SLParseType(SLTokenReader* reader) {
     SLToken* tok = SLPeekToken(reader);
 
     if (tok == NULL) {
-        // TODO: Error
+        SL_EXPECTED(reader, NULL, "type");
         return NULL;
     }
 
@@ -902,7 +891,10 @@ SLType* SLParseType(SLTokenReader* reader) {
         case SL_TOK_BOOLEAN:
         case SL_TOK_IDENTIFIER: {
             SLType* ret = calloc(1, sizeof(*ret));
-            if (ret == NULL) return NULL;
+            if (ret == NULL) {
+                SL_RAISE(reader, tok, "out of memory");
+                return NULL;
+            }
 
             reader->cursor++;
 
@@ -919,25 +911,20 @@ SLType* SLParseType(SLTokenReader* reader) {
             return ret;
         }
         case SL_TOK_ARRAY:
-            return SLParseArrayType(reader);
+            SL_RETURN_TRACED_T(SLType, reader, SLParseArrayType(reader));
         case SL_TOK_RECORD:
-            return SLParseRecordType(reader);
+            SL_RETURN_TRACED_T(SLType, reader, SLParseRecordType(reader));
         default:
-            // TODO: Error
+            SL_EXPECTED(reader, tok, "type");
             return NULL;
     }
 }
 
 SLType* SLParseArrayType(SLTokenReader* reader) {
-    SLToken* kw = SLMatchToken(reader, SL_TOK_ARRAY);
+    SLToken* kw = SL_REQUIRE(reader, SL_TOK_ARRAY, "'array'");
+    if (kw == NULL) return NULL;
 
-    if (kw == NULL) {
-        // TODO: Error
-        return NULL;
-    }
-
-    if (SLMatchToken(reader, SL_TOK_LBRACKET) == NULL) {
-        // TODO: Error
+    if (SL_REQUIRE(reader, SL_TOK_LBRACKET, "'[' after 'array'") == NULL) {
         return NULL;
     }
 
@@ -947,13 +934,12 @@ SLType* SLParseArrayType(SLTokenReader* reader) {
     if (next != NULL && next->type != SL_TOK_RBRACKET) {
         size = SLParseExpr(reader);
         if (size == NULL) {
-            // TODO: Error
+            SL_TRACE(reader);
             return NULL;
         }
     }
 
-    if (SLMatchToken(reader, SL_TOK_RBRACKET) == NULL) {
-        // TODO: Error
+    if (SL_REQUIRE(reader, SL_TOK_RBRACKET, "']' after array size") == NULL) {
         SLFreeExpr(size);
         return NULL;
     }
@@ -961,7 +947,7 @@ SLType* SLParseArrayType(SLTokenReader* reader) {
     SLType* element = SLParseType(reader);
 
     if (element == NULL) {
-        // TODO: Error
+        SL_TRACE(reader);
         SLFreeExpr(size);
         return NULL;
     }
@@ -969,6 +955,7 @@ SLType* SLParseArrayType(SLTokenReader* reader) {
     SLType* ret = calloc(1, sizeof(*ret));
 
     if (ret == NULL) {
+        SL_RAISE(reader, kw, "out of memory");
         SLFreeExpr(size);
         SLFreeType(element);
         return NULL;
@@ -984,15 +971,14 @@ SLType* SLParseArrayType(SLTokenReader* reader) {
 }
 
 SLType* SLParseRecordType(SLTokenReader* reader) {
-    SLToken* kw = SLMatchToken(reader, SL_TOK_RECORD);
-
-    if (kw == NULL) {
-        // TODO: Error
-        return NULL;
-    }
+    SLToken* kw = SL_REQUIRE(reader, SL_TOK_RECORD, "'record'");
+    if (kw == NULL) return NULL;
 
     SLType* ret = calloc(1, sizeof(*ret));
-    if (ret == NULL) return NULL;
+    if (ret == NULL) {
+        SL_RAISE(reader, kw, "out of memory");
+        return NULL;
+    }
 
     ret->kind = SL_TYPE_RECORD;
     ret->span.begin = kw->position;
@@ -1001,29 +987,31 @@ SLType* SLParseRecordType(SLTokenReader* reader) {
         SLSkipSemicolons(reader);
         SLToken* next = SLPeekToken(reader);
 
-        if (next == NULL) {
-            // TODO: Error unterminated record
+        if (next != NULL && next->type == SL_TOK_END) break;
+
+        if (next == NULL || next->type != SL_TOK_VAR) {
+            SL_EXPECTED(reader, next, "field declaration ('var') or 'end' in record");
             SLFreeType(ret);
             return NULL;
         }
 
-        if (next->type == SL_TOK_END) break;
-
         SLDecl* field = SLParseVarDecl(reader);
 
         if (field == NULL) {
+            SL_TRACE(reader);
             SLFreeType(ret);
             return NULL;
         }
 
         if (!SLDeclArrayPush(&ret->value.record.fields, field)) {
+            SL_RAISE(reader, next, "out of memory");
             SLFreeDecl(field);
             SLFreeType(ret);
             return NULL;
         }
     }
 
-    SLToken* end = SLMatchToken(reader, SL_TOK_END); // guaranteed by the loop
+    SLToken* end = SLMatchToken(reader, SL_TOK_END);
     ret->span.end = SLTokenEnd(end);
 
     return ret;
@@ -1032,19 +1020,11 @@ SLType* SLParseRecordType(SLTokenReader* reader) {
 /* ================= declarations ================= */
 
 SLDecl* SLParseVarDecl(SLTokenReader* reader) {
-    SLToken* kw = SLMatchToken(reader, SL_TOK_VAR);
+    SLToken* kw = SL_REQUIRE(reader, SL_TOK_VAR, "'var'");
+    if (kw == NULL) return NULL;
 
-    if (kw == NULL) {
-        // TODO: Error
-        return NULL;
-    }
-
-    SLToken* name = SLMatchToken(reader, SL_TOK_IDENTIFIER);
-
-    if (name == NULL) {
-        // TODO: Error
-        return NULL;
-    }
+    SLToken* name = SL_REQUIRE(reader, SL_TOK_IDENTIFIER, "variable name after 'var'");
+    if (name == NULL) return NULL;
 
     SLType* type = NULL;
     SLExpr* init = NULL;
@@ -1053,7 +1033,7 @@ SLDecl* SLParseVarDecl(SLTokenReader* reader) {
         type = SLParseType(reader);
 
         if (type == NULL) {
-            // TODO: Error
+            SL_TRACE(reader);
             return NULL;
         }
 
@@ -1061,7 +1041,7 @@ SLDecl* SLParseVarDecl(SLTokenReader* reader) {
             init = SLParseExpr(reader);
 
             if (init == NULL) {
-                // TODO: Error
+                SL_TRACE(reader);
                 SLFreeType(type);
                 return NULL;
             }
@@ -1070,17 +1050,18 @@ SLDecl* SLParseVarDecl(SLTokenReader* reader) {
         init = SLParseExpr(reader);
 
         if (init == NULL) {
-            // TODO: Error
+            SL_TRACE(reader);
             return NULL;
         }
     } else {
-        // TODO: Error expected ':' or '='
+        SL_EXPECTED(reader, SLPeekToken(reader), "':' or '=' after variable name");
         return NULL;
     }
 
     SLDecl* ret = calloc(1, sizeof(*ret));
 
     if (ret == NULL) {
+        SL_RAISE(reader, name, "out of memory");
         SLFreeType(type);
         SLFreeExpr(init);
         return NULL;
@@ -1097,35 +1078,27 @@ SLDecl* SLParseVarDecl(SLTokenReader* reader) {
 }
 
 SLDecl* SLParseTypeDecl(SLTokenReader* reader) {
-    SLToken* kw = SLMatchToken(reader, SL_TOK_TYPE);
+    SLToken* kw = SL_REQUIRE(reader, SL_TOK_TYPE, "'type'");
+    if (kw == NULL) return NULL;
 
-    if (kw == NULL) {
-        // TODO: Error
-        return NULL;
-    }
+    SLToken* name = SL_REQUIRE(reader, SL_TOK_IDENTIFIER, "type name after 'type'");
+    if (name == NULL) return NULL;
 
-    SLToken* name = SLMatchToken(reader, SL_TOK_IDENTIFIER);
-
-    if (name == NULL) {
-        // TODO: Error
-        return NULL;
-    }
-
-    if (SLMatchToken(reader, SL_TOK_EQUAL) == NULL) {
-        // TODO: Error
+    if (SL_REQUIRE(reader, SL_TOK_EQUAL, "'=' after type name") == NULL) {
         return NULL;
     }
 
     SLType* type = SLParseType(reader);
 
     if (type == NULL) {
-        // TODO: Error
+        SL_TRACE(reader);
         return NULL;
     }
 
     SLDecl* ret = calloc(1, sizeof(*ret));
 
     if (ret == NULL) {
+        SL_RAISE(reader, name, "out of memory");
         SLFreeType(type);
         return NULL;
     }
@@ -1142,36 +1115,30 @@ SLDecl* SLParseTypeDecl(SLTokenReader* reader) {
 SLDecl* SLParseSimpleDecl(SLTokenReader* reader) {
     SLToken* tok = SLPeekToken(reader);
 
-    if (tok == NULL) {
-        // TODO: Error
-        return NULL;
+    if (tok != NULL && tok->type == SL_TOK_VAR) {
+        SL_RETURN_TRACED_T(SLDecl, reader, SLParseVarDecl(reader));
+    }
+    if (tok != NULL && tok->type == SL_TOK_TYPE) {
+        SL_RETURN_TRACED_T(SLDecl, reader, SLParseTypeDecl(reader));
     }
 
-    if (tok->type == SL_TOK_VAR) return SLParseVarDecl(reader);
-    if (tok->type == SL_TOK_TYPE) return SLParseTypeDecl(reader);
-
-    // TODO: Error
+    SL_EXPECTED(reader, tok, "'var', 'type' or 'routine'");
     return NULL;
 }
 
 bool SLParseParams(SLTokenReader* reader, SLParamArray* params) {
     while (true) {
-        SLToken* name = SLMatchToken(reader, SL_TOK_IDENTIFIER);
+        SLToken* name = SL_REQUIRE(reader, SL_TOK_IDENTIFIER, "parameter name");
+        if (name == NULL) return false;
 
-        if (name == NULL) {
-            // TODO: Error
-            return false;
-        }
-
-        if (SLMatchToken(reader, SL_TOK_COLON) == NULL) {
-            // TODO: Error
+        if (SL_REQUIRE(reader, SL_TOK_COLON, "':' after parameter name") == NULL) {
             return false;
         }
 
         SLType* type = SLParseType(reader);
 
         if (type == NULL) {
-            // TODO: Error
+            SL_TRACE(reader);
             return false;
         }
 
@@ -1182,6 +1149,7 @@ bool SLParseParams(SLTokenReader* reader, SLParamArray* params) {
         };
 
         if (!SLParamArrayPush(params, param)) {
+            SL_RAISE(reader, name, "out of memory");
             SLFreeType(type);
             return false;
         }
@@ -1191,27 +1159,21 @@ bool SLParseParams(SLTokenReader* reader, SLParamArray* params) {
 }
 
 SLDecl* SLParseRoutineDecl(SLTokenReader* reader) {
-    SLToken* kw = SLMatchToken(reader, SL_TOK_ROUTINE);
+    SLToken* kw = SL_REQUIRE(reader, SL_TOK_ROUTINE, "'routine'");
+    if (kw == NULL) return NULL;
 
-    if (kw == NULL) {
-        // TODO: Error
-        return NULL;
-    }
+    SLToken* name = SL_REQUIRE(reader, SL_TOK_IDENTIFIER, "routine name after 'routine'");
+    if (name == NULL) return NULL;
 
-    SLToken* name = SLMatchToken(reader, SL_TOK_IDENTIFIER);
-
-    if (name == NULL) {
-        // TODO: Error
-        return NULL;
-    }
-
-    if (SLMatchToken(reader, SL_TOK_LPAR) == NULL) {
-        // TODO: Error
+    if (SL_REQUIRE(reader, SL_TOK_LPAR, "'(' after routine name") == NULL) {
         return NULL;
     }
 
     SLDecl* decl = calloc(1, sizeof(*decl));
-    if (decl == NULL) return NULL;
+    if (decl == NULL) {
+        SL_RAISE(reader, name, "out of memory");
+        return NULL;
+    }
 
     decl->kind = SL_DECL_ROUTINE;
     decl->value.routine.name = name;
@@ -1223,15 +1185,14 @@ SLDecl* SLParseRoutineDecl(SLTokenReader* reader) {
     SLToken* end = NULL;
 
     if (next != NULL && next->type != SL_TOK_RPAR) {
-        if (!SLParseParams(reader, &decl->value.routine.params)) goto fail;
+        if (!SLParseParams(reader, &decl->value.routine.params)) {
+            SL_TRACE(reader);
+            goto fail;
+        }
     }
 
-    rpar = SLMatchToken(reader, SL_TOK_RPAR);
-
-    if (rpar == NULL) {
-        // TODO: Error
-        goto fail;
-    }
+    rpar = SL_REQUIRE(reader, SL_TOK_RPAR, "',' or ')' in parameter list");
+    if (rpar == NULL) goto fail;
 
     decl->span.end = SLTokenEnd(rpar);
 
@@ -1239,7 +1200,7 @@ SLDecl* SLParseRoutineDecl(SLTokenReader* reader) {
         SLType* return_type = SLParseType(reader);
 
         if (return_type == NULL) {
-            // TODO: Error
+            SL_TRACE(reader);
             goto fail;
         }
 
@@ -1250,12 +1211,14 @@ SLDecl* SLParseRoutineDecl(SLTokenReader* reader) {
     if (SLMatchToken(reader, SL_TOK_EQUAL) != NULL) {
         decl->value.routine.body_kind = SL_ROUTINE_BLOCK;
 
-        if (!SLParseBody(reader, &decl->value.routine.body)) goto fail;
+        if (!SLParseBody(reader, &decl->value.routine.body)) {
+            SL_TRACE(reader);
+            goto fail;
+        }
 
-        end = SLMatchToken(reader, SL_TOK_END);
-
+        end = SL_REQUIRE(reader, SL_TOK_END, "'end' to close routine body");
         if (end == NULL) {
-            // TODO: Error expected 'end'
+            SL_TRACE(reader);
             goto fail;
         }
 
@@ -1265,7 +1228,7 @@ SLDecl* SLParseRoutineDecl(SLTokenReader* reader) {
         decl->value.routine.expr_body = SLParseExpr(reader);
 
         if (decl->value.routine.expr_body == NULL) {
-            // TODO: Error
+            SL_TRACE(reader);
             goto fail;
         }
 
@@ -1297,14 +1260,21 @@ bool SLParseBody(SLTokenReader* reader, SLBody* body) {
         if (next->type == SL_TOK_VAR || next->type == SL_TOK_TYPE) {
             item.kind = SL_ITEM_DECL;
             item.value.decl = SLParseSimpleDecl(reader);
-            if (item.value.decl == NULL) return false;
+            if (item.value.decl == NULL) {
+                SL_TRACE(reader);
+                return false;
+            }
         } else {
             item.kind = SL_ITEM_STMT;
             item.value.stmt = SLParseStatement(reader);
-            if (item.value.stmt == NULL) return false;
+            if (item.value.stmt == NULL) {
+                SL_TRACE(reader);
+                return false;
+            }
         }
 
         if (!SLBodyPush(body, item)) {
+            SL_RAISE(reader, next, "out of memory");
             if (item.kind == SL_ITEM_DECL) {
                 SLFreeDecl(item.value.decl);
             } else {
@@ -1319,37 +1289,39 @@ SLStmt* SLParseStatement(SLTokenReader* reader) {
     SLToken* tok = SLPeekToken(reader);
 
     if (tok == NULL) {
-        // TODO: Error
+        SL_EXPECTED(reader, NULL, "statement or 'end'");
         return NULL;
     }
 
     switch (tok->type) {
-        case SL_TOK_IDENTIFIER: return SLParseIDStatement(reader);
-        case SL_TOK_WHILE:      return SLParseWhile(reader);
-        case SL_TOK_FOR:        return SLParseFor(reader);
-        case SL_TOK_IF:         return SLParseIf(reader);
-        case SL_TOK_RETURN:     return SLParseReturn(reader);
+        case SL_TOK_IDENTIFIER:
+            SL_RETURN_TRACED_T(SLStmt, reader, SLParseIDStatement(reader));
+        case SL_TOK_WHILE:
+            SL_RETURN_TRACED_T(SLStmt, reader, SLParseWhile(reader));
+        case SL_TOK_FOR:
+            SL_RETURN_TRACED_T(SLStmt, reader, SLParseFor(reader));
+        case SL_TOK_IF:
+            SL_RETURN_TRACED_T(SLStmt, reader, SLParseIf(reader));
+        case SL_TOK_RETURN:
+            SL_RETURN_TRACED_T(SLStmt, reader, SLParseReturn(reader));
         default:
-            // TODO: Error
+            SL_EXPECTED(reader, tok, "statement or 'end'");
             return NULL;
     }
 }
 
-// id_statement = id, ( call_tail | modifiable_tail, ":=", expr );
-// SLParseIDPrimary already parses "id (call_tail | modifiable_tail)", so we
-// reuse it and then decide: a CALL is a call statement, anything else must
-// be followed by ":=".
 SLStmt* SLParseIDStatement(SLTokenReader* reader) {
     SLExpr* target = SLParseIDPrimary(reader);
 
     if (target == NULL) {
-        // TODO: Error
+        SL_TRACE(reader);
         return NULL;
     }
 
     SLStmt* ret = calloc(1, sizeof(*ret));
 
     if (ret == NULL) {
+        SL_RAISE(reader, SLPeekToken(reader), "out of memory");
         SLFreeExpr(target);
         return NULL;
     }
@@ -1366,8 +1338,7 @@ SLStmt* SLParseIDStatement(SLTokenReader* reader) {
     ret->kind = SL_STMT_ASSIGN;
     ret->value.assign.target = target;
 
-    if (SLMatchToken(reader, SL_TOK_ASSIGN) == NULL) {
-        // TODO: Error expected ':='
+    if (SL_REQUIRE(reader, SL_TOK_ASSIGN, "':=' in assignment") == NULL) {
         SLFreeStmt(ret);
         return NULL;
     }
@@ -1375,7 +1346,7 @@ SLStmt* SLParseIDStatement(SLTokenReader* reader) {
     SLExpr* value = SLParseExpr(reader);
 
     if (value == NULL) {
-        // TODO: Error
+        SL_TRACE(reader);
         SLFreeStmt(ret);
         return NULL;
     }
@@ -1387,15 +1358,14 @@ SLStmt* SLParseIDStatement(SLTokenReader* reader) {
 }
 
 SLStmt* SLParseWhile(SLTokenReader* reader) {
-    SLToken* kw = SLMatchToken(reader, SL_TOK_WHILE);
-
-    if (kw == NULL) {
-        // TODO: Error
-        return NULL;
-    }
+    SLToken* kw = SL_REQUIRE(reader, SL_TOK_WHILE, "'while'");
+    if (kw == NULL) return NULL;
 
     SLStmt* ret = calloc(1, sizeof(*ret));
-    if (ret == NULL) return NULL;
+    if (ret == NULL) {
+        SL_RAISE(reader, kw, "out of memory");
+        return NULL;
+    }
 
     ret->kind = SL_STMT_WHILE;
     ret->span.begin = kw->position;
@@ -1405,23 +1375,21 @@ SLStmt* SLParseWhile(SLTokenReader* reader) {
     ret->value.while_loop.condition = SLParseExpr(reader);
 
     if (ret->value.while_loop.condition == NULL) {
-        // TODO: Error
+        SL_TRACE(reader);
         goto fail;
     }
 
-    if (SLMatchToken(reader, SL_TOK_LOOP) == NULL) {
-        // TODO: Error expected 'loop'
+    if (SL_REQUIRE(reader, SL_TOK_LOOP, "'loop' after while condition") == NULL) {
         goto fail;
     }
 
-    if (!SLParseBody(reader, &ret->value.while_loop.body)) goto fail;
-
-    end = SLMatchToken(reader, SL_TOK_END);
-
-    if (end == NULL) {
-        // TODO: Error expected 'end'
+    if (!SLParseBody(reader, &ret->value.while_loop.body)) {
+        SL_TRACE(reader);
         goto fail;
     }
+
+    end = SL_REQUIRE(reader, SL_TOK_END, "'end' to close 'while' loop");
+    if (end == NULL) goto fail;
 
     ret->span.end = SLTokenEnd(end);
     return ret;
@@ -1432,27 +1400,21 @@ fail:
 }
 
 SLStmt* SLParseFor(SLTokenReader* reader) {
-    SLToken* kw = SLMatchToken(reader, SL_TOK_FOR);
+    SLToken* kw = SL_REQUIRE(reader, SL_TOK_FOR, "'for'");
+    if (kw == NULL) return NULL;
 
-    if (kw == NULL) {
-        // TODO: Error
-        return NULL;
-    }
+    SLToken* iterator = SL_REQUIRE(reader, SL_TOK_IDENTIFIER, "loop variable after 'for'");
+    if (iterator == NULL) return NULL;
 
-    SLToken* iterator = SLMatchToken(reader, SL_TOK_IDENTIFIER);
-
-    if (iterator == NULL) {
-        // TODO: Error
-        return NULL;
-    }
-
-    if (SLMatchToken(reader, SL_TOK_IN) == NULL) {
-        // TODO: Error
+    if (SL_REQUIRE(reader, SL_TOK_IN, "'in' after loop variable") == NULL) {
         return NULL;
     }
 
     SLStmt* ret = calloc(1, sizeof(*ret));
-    if (ret == NULL) return NULL;
+    if (ret == NULL) {
+        SL_RAISE(reader, kw, "out of memory");
+        return NULL;
+    }
 
     ret->kind = SL_STMT_FOR;
     ret->value.for_loop.iterator = iterator;
@@ -1464,7 +1426,7 @@ SLStmt* SLParseFor(SLTokenReader* reader) {
     ret->value.for_loop.from = SLParseExpr(reader);
 
     if (ret->value.for_loop.from == NULL) {
-        // TODO: Error
+        SL_TRACE(reader);
         goto fail;
     }
 
@@ -1472,7 +1434,7 @@ SLStmt* SLParseFor(SLTokenReader* reader) {
         ret->value.for_loop.to = SLParseExpr(reader);
 
         if (ret->value.for_loop.to == NULL) {
-            // TODO: Error
+            SL_TRACE(reader);
             goto fail;
         }
     }
@@ -1481,19 +1443,17 @@ SLStmt* SLParseFor(SLTokenReader* reader) {
         ret->value.for_loop.reverse = true;
     }
 
-    if (SLMatchToken(reader, SL_TOK_LOOP) == NULL) {
-        // TODO: Error expected 'loop'
+    if (SL_REQUIRE(reader, SL_TOK_LOOP, "'loop' after for range") == NULL) {
         goto fail;
     }
 
-    if (!SLParseBody(reader, &ret->value.for_loop.body)) goto fail;
-
-    end = SLMatchToken(reader, SL_TOK_END);
-
-    if (end == NULL) {
-        // TODO: Error expected 'end'
+    if (!SLParseBody(reader, &ret->value.for_loop.body)) {
+        SL_TRACE(reader);
         goto fail;
     }
+
+    end = SL_REQUIRE(reader, SL_TOK_END, "'end' to close 'for' loop");
+    if (end == NULL) goto fail;
 
     ret->span.end = SLTokenEnd(end);
     return ret;
@@ -1504,15 +1464,14 @@ fail:
 }
 
 SLStmt* SLParseIf(SLTokenReader* reader) {
-    SLToken* kw = SLMatchToken(reader, SL_TOK_IF);
-
-    if (kw == NULL) {
-        // TODO: Error
-        return NULL;
-    }
+    SLToken* kw = SL_REQUIRE(reader, SL_TOK_IF, "'if'");
+    if (kw == NULL) return NULL;
 
     SLStmt* ret = calloc(1, sizeof(*ret));
-    if (ret == NULL) return NULL;
+    if (ret == NULL) {
+        SL_RAISE(reader, kw, "out of memory");
+        return NULL;
+    }
 
     ret->kind = SL_STMT_IF;
     ret->span.begin = kw->position;
@@ -1522,29 +1481,30 @@ SLStmt* SLParseIf(SLTokenReader* reader) {
     ret->value.if_stmt.condition = SLParseExpr(reader);
 
     if (ret->value.if_stmt.condition == NULL) {
-        // TODO: Error
+        SL_TRACE(reader);
         goto fail;
     }
 
-    if (SLMatchToken(reader, SL_TOK_THEN) == NULL) {
-        // TODO: Error expected 'then'
+    if (SL_REQUIRE(reader, SL_TOK_THEN, "'then' after if condition") == NULL) {
         goto fail;
     }
 
-    if (!SLParseBody(reader, &ret->value.if_stmt.then_body)) goto fail;
+    if (!SLParseBody(reader, &ret->value.if_stmt.then_body)) {
+        SL_TRACE(reader);
+        goto fail;
+    }
 
     if (SLMatchToken(reader, SL_TOK_ELSE) != NULL) {
         ret->value.if_stmt.has_else = true;
 
-        if (!SLParseBody(reader, &ret->value.if_stmt.else_body)) goto fail;
+        if (!SLParseBody(reader, &ret->value.if_stmt.else_body)) {
+            SL_TRACE(reader);
+            goto fail;
+        }
     }
 
-    end = SLMatchToken(reader, SL_TOK_END);
-
-    if (end == NULL) {
-        // TODO: Error expected 'end'
-        goto fail;
-    }
+    end = SL_REQUIRE(reader, SL_TOK_END, "'end' to close 'if'");
+    if (end == NULL) goto fail;
 
     ret->span.end = SLTokenEnd(end);
     return ret;
@@ -1555,12 +1515,8 @@ fail:
 }
 
 SLStmt* SLParseReturn(SLTokenReader* reader) {
-    SLToken* kw = SLMatchToken(reader, SL_TOK_RETURN);
-
-    if (kw == NULL) {
-        // TODO: Error
-        return NULL;
-    }
+    SLToken* kw = SL_REQUIRE(reader, SL_TOK_RETURN, "'return'");
+    if (kw == NULL) return NULL;
 
     SLExpr* value = NULL;
 
@@ -1568,7 +1524,7 @@ SLStmt* SLParseReturn(SLTokenReader* reader) {
         value = SLParseExpr(reader);
 
         if (value == NULL) {
-            // TODO: Error
+            SL_TRACE(reader);
             return NULL;
         }
     }
@@ -1576,6 +1532,7 @@ SLStmt* SLParseReturn(SLTokenReader* reader) {
     SLStmt* ret = calloc(1, sizeof(*ret));
 
     if (ret == NULL) {
+        SL_RAISE(reader, kw, "out of memory");
         SLFreeExpr(value);
         return NULL;
     }
@@ -1592,7 +1549,10 @@ SLStmt* SLParseReturn(SLTokenReader* reader) {
 
 SLProgram* SLParseProgram(SLTokenReader* reader) {
     SLProgram* program = calloc(1, sizeof(*program));
-    if (program == NULL) return NULL;
+    if (program == NULL) {
+        SL_RAISE(reader, NULL, "out of memory");
+        return NULL;
+    }
 
     while (true) {
         SLSkipSemicolons(reader);
@@ -1605,18 +1565,13 @@ SLProgram* SLParseProgram(SLTokenReader* reader) {
             : SLParseSimpleDecl(reader);
 
         if (decl == NULL) {
-            for (int k = reader->cursor - 2; k <= reader->cursor; ++k) {
-                if (k < 0 || (size_t) k >= reader->tokens->count) continue;
-                SLToken* t = &reader->tokens->items[k];
-                fprintf(stderr, "token[%d]: type=%d line=%d '%.*s'\n",
-                        k, (int) t->type, t->position.line,
-                        (int) t->value.length, t->value.start ? t->value.start : "");
-            }
+            SL_TRACE(reader);
             SLFreeProgram(program);
             return NULL;
         }
 
         if (!SLDeclArrayPush(&program->decls, decl)) {
+            SL_RAISE(reader, tok, "out of memory");
             SLFreeDecl(decl);
             SLFreeProgram(program);
             return NULL;

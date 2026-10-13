@@ -293,6 +293,8 @@ void SLErrorPrint(const SLParseError* e, FILE* out, const char* filename,
 
 #define SL_RETURN_TRACED(r, call) \
     do { SLExpr* _res = (call); if (_res == NULL) SL_TRACE(r); return _res; } while (0)
+#define SL_RETURN_TRACED_T(T, r, call) \
+    do { T* _res = (call); if (_res == NULL) SL_TRACE(r); return _res; } while (0)
 
 SLDecl* SLParseSimpleDecl(SLTokenReader* reader);
 SLDecl* SLParseVarDecl(SLTokenReader* reader);
