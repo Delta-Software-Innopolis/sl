@@ -7,6 +7,7 @@
 
 typedef struct SLScope {
     struct SLScope* parent;
+    struct SLScope* alloc_next;
     SLSymbolTable symbols;
 } SLScope;
 
@@ -25,8 +26,19 @@ typedef struct {
 
     SLSemType primitive_types[SL_SEM_ERROR + 1];
     SLSemanticError error;
+
+    SLScope* all_scopes;
+    SLSemType* current_return_type;
 } SLSemanticState;
 
+SLScope* SLScopePush(SLSemanticState* state);
+void SLScopePop(SLSemanticState* state);
+SLSymbol* SLScopeDeclare(SLSemanticState* state, SLSlice name, SLSymbolKind kind,
+                         SLSemType* type, SLSpan span, bool is_mutable);
+
+SLSemType* SLCheckExpr(SLSemanticState* state, SLExpr* expr);
+bool SLCheckStmt(SLSemanticState* state, SLStmt* stmt);
+bool SLAnalyzeRoutines(SLSemanticState* state);
 
 bool SLAnalyzeProgram(SLSemanticState* state, const SLProgram* program);
 

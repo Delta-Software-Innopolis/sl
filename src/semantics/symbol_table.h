@@ -38,12 +38,12 @@ typedef enum {
     SL_SYMBOL_ITERATOR
 } SLSymbolKind;
 
-typedef struct {
+typedef struct SLSymbol {
     SLSlice name;
     SLSymbolKind kind;
 
-    SLSemType* type; 
-    SLSpan span;  
+    SLSemType* type;
+    SLSpan span;
     bool is_mutable;
 
     SLDecl* declaration;

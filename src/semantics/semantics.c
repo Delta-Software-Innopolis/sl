@@ -1,7 +1,7 @@
 #include "semantics.h"
 
 bool SLAnalyzeProgram(SLSemanticState* state, const SLProgram* program) {
-    return SLAnalyzeGlobal(state, program) && SLAnalyzeGlobalTypes(state);
+    return SLAnalyzeGlobal(state, program) && SLAnalyzeGlobalTypes(state) && SLAnalyzeRoutines(state);
 }
 
 static bool SLSemanticFail(SLSemanticState* state, SLSpan span,
@@ -17,6 +17,18 @@ static bool SLSemanticFail(SLSemanticState* state, SLSpan span,
     }
 
     return false;
+}
+
+static SLScope* SLScopeNew(SLSemanticState* state, SLScope* parent) {
+    SLScope* scope = calloc(1, sizeof(*scope));
+    if (scope == NULL) {
+        SLSemanticFail(state, (SLSpan){0}, "out of memory");
+        return NULL;
+    }
+    scope->parent = parent;
+    scope->alloc_next = state->all_scopes;
+    state->all_scopes = scope;
+    return scope;
 }
 
 SLSymbol* SLScopeLookupLocal(const SLScope* scope, SLSlice name) {
@@ -41,7 +53,7 @@ bool SLAnalyzeGlobal(SLSemanticState* state, const SLProgram* program) {
     }
 
     if (state->global_scope == NULL) {
-        state->global_scope = calloc(1, sizeof(*state->global_scope));
+        state->global_scope = SLScopeNew(state, NULL);
         if (state->global_scope == NULL) {
             return SLSemanticFail(state, (SLSpan){0}, "out of memory");
         }
@@ -76,7 +88,7 @@ bool SLAnalyzeGlobal(SLSemanticState* state, const SLProgram* program) {
 
         SLSymbol* existing = SLSymbolTableFind(table, name->value);
         if (existing != NULL) {
-            
+
             if (kind == SL_SYMBOL_ROUTINE
                 && existing->kind == SL_SYMBOL_ROUTINE
                 && existing->declaration != NULL
@@ -103,7 +115,7 @@ bool SLAnalyzeGlobal(SLSemanticState* state, const SLProgram* program) {
         symbol->span = decl->span;
         symbol->is_mutable = kind == SL_SYMBOL_VAR;
         symbol->declaration = decl;
-        
+
         if (kind == SL_SYMBOL_ROUTINE
             && decl->value.routine.body_kind != SL_ROUTINE_FORWARD) {
             symbol->definition = decl;
@@ -176,7 +188,6 @@ SLSemType* SLResolveType(SLSemanticState* state, const SLType* type) {
                 return NULL;
             }
 
-            // Resolve the alias where it was declared, not where it is used.
             SLScope* saved_scope = state->current_scope;
             state->current_scope = owner;
 
@@ -188,7 +199,7 @@ SLSemType* SLResolveType(SLSemanticState* state, const SLType* type) {
             symbol->resolution_state = symbol->type != NULL
                 ? SL_TYPE_RESOLVED : SL_TYPE_UNRESOLVED;
             state->current_scope = saved_scope;
-            
+
             return symbol->type;
         }
 
@@ -302,7 +313,7 @@ bool SLAnalyzeGlobalTypes(SLSemanticState* state) {
     for (size_t i = 0; i < table->count; ++i) {
         SLSymbol* symbol = table->items[i];
         SLDecl* decl = symbol->declaration;
-        if (decl == NULL) continue;  // Predefined symbols have no AST declaration.
+        if (decl == NULL) continue;
 
         if (symbol->kind == SL_SYMBOL_TYPE) {
             SLType reference = {
@@ -340,18 +351,515 @@ fail:
     return false;
 }
 
+typedef enum {
+    SL_OP_UNKNOWN,
+    SL_OP_ADD, SL_OP_SUB, SL_OP_MUL, SL_OP_DIV, SL_OP_MOD,
+    SL_OP_LT, SL_OP_LE, SL_OP_GT, SL_OP_GE, SL_OP_EQ, SL_OP_NE,
+    SL_OP_AND, SL_OP_OR, SL_OP_XOR,
+    SL_OP_NEG, SL_OP_POS, SL_OP_NOT
+} SLOp;
+
+static SLOp SLBinaryOpKind(const SLToken* op) {
+    switch (op->type) {
+        case SL_TOK_PLUS:       return SL_OP_ADD;
+        case SL_TOK_MINUS:      return SL_OP_SUB;
+        case SL_TOK_MULTIPLY:   return SL_OP_MUL;
+        case SL_TOK_DIVIDE:     return SL_OP_DIV;
+        case SL_TOK_MODULO:     return SL_OP_MOD;
+        case SL_TOK_LESS:       return SL_OP_LT;
+        case SL_TOK_LESS_EQ:    return SL_OP_LE;
+        case SL_TOK_GREATER:    return SL_OP_GT;
+        case SL_TOK_GREATER_EQ: return SL_OP_GE;
+        case SL_TOK_EQUAL:      return SL_OP_EQ;
+        case SL_TOK_NOT_EQ:     return SL_OP_NE;
+        case SL_TOK_AND:        return SL_OP_AND;
+        case SL_TOK_OR:         return SL_OP_OR;
+        case SL_TOK_XOR:        return SL_OP_XOR;
+        default:                return SL_OP_UNKNOWN;
+    }
+}
+
+static SLOp SLUnaryOpKind(const SLToken* op) {
+    switch (op->type) {
+        case SL_TOK_MINUS: return SL_OP_NEG;
+        case SL_TOK_PLUS:  return SL_OP_POS;
+        case SL_TOK_NOT:   return SL_OP_NOT;
+        default:           return SL_OP_UNKNOWN;
+    }
+}
+
+static const char* SLTypeName(const SLSemType* t) {
+    switch (t->kind) {
+        case SL_SEM_INTEGER: return "integer";
+        case SL_SEM_REAL:    return "real";
+        case SL_SEM_BOOLEAN: return "boolean";
+        case SL_SEM_VOID:    return "void";
+        default:             return "<error>";
+    }
+}
+
+// TODO
+static bool SLTypesEqual(const SLSemType* a, const SLSemType* b) {
+    return a == b;
+}
+
+static bool SLIsNumeric(const SLSemType* t) {
+    return t->kind == SL_SEM_INTEGER || t->kind == SL_SEM_REAL;
+}
+
+static bool SLAssignable(const SLSemType* to, const SLSemType* from) {
+    return SLTypesEqual(to, from)
+        || (to->kind == SL_SEM_REAL && from->kind == SL_SEM_INTEGER);
+}
+
+static SLSemType* SLCheckValue(SLSemanticState* state, SLExpr* expr) {
+    SLSemType* type = SLCheckExpr(state, expr);
+    if (type == NULL) return NULL;
+    if (type->kind == SL_SEM_VOID) {
+        SLSemanticFail(state, expr->span, "expression has no value");
+        return NULL;
+    }
+    return type;
+}
+
+static SLSemType* SLCheckBinary(SLSemanticState* state, SLExpr* expr,
+                                SLSemType* lt, SLSemType* rt) {
+    bool numeric = SLIsNumeric(lt) && SLIsNumeric(rt);
+
+    switch (SLBinaryOpKind(expr->value.binary.op)) {
+        case SL_OP_ADD: case SL_OP_SUB: case SL_OP_MUL: case SL_OP_DIV:
+            if (numeric) {
+                return SLPrimitiveType(state,
+                    (lt->kind == SL_SEM_REAL || rt->kind == SL_SEM_REAL)
+                        ? SL_SEM_REAL : SL_SEM_INTEGER);
+            }
+            break;
+        case SL_OP_MOD:
+            if (lt->kind == SL_SEM_INTEGER && rt->kind == SL_SEM_INTEGER) {
+                return lt;
+            }
+            break;
+        case SL_OP_LT: case SL_OP_LE: case SL_OP_GT: case SL_OP_GE:
+            if (numeric) return SLPrimitiveType(state, SL_SEM_BOOLEAN);
+            break;
+        case SL_OP_EQ: case SL_OP_NE:
+            if (numeric || (lt->kind == SL_SEM_BOOLEAN
+                            && rt->kind == SL_SEM_BOOLEAN)) {
+                return SLPrimitiveType(state, SL_SEM_BOOLEAN);
+            }
+            break;
+        case SL_OP_AND: case SL_OP_OR: case SL_OP_XOR:
+            if (lt->kind == SL_SEM_BOOLEAN && rt->kind == SL_SEM_BOOLEAN) {
+                return lt;
+            }
+            break;
+        default:
+            SLSemanticFail(state, expr->span, "unknown binary operator");
+            return NULL;
+    }
+
+    SLSemanticFail(state, expr->span, "invalid operand types: '%s' and '%s'",
+                   SLTypeName(lt), SLTypeName(rt));
+    return NULL;
+}
+
+static SLSemType* SLCheckCall(SLSemanticState* state, SLExpr* expr) {
+    SLToken* callee = expr->value.call.callee;
+    SLSlice name = callee->value;
+    SLSymbol* symbol = SLScopeLookup(state->current_scope, name);
+
+    if (symbol == NULL) {
+        SLSemanticFail(state, expr->span, "unknown routine '%.*s'",
+                       (int) name.length, name.start);
+        return NULL;
+    }
+    if (symbol->kind != SL_SYMBOL_ROUTINE || symbol->signature == NULL) {
+        SLSemanticFail(state, expr->span, "'%.*s' is not a routine",
+                       (int) name.length, name.start);
+        return NULL;
+    }
+
+    const SLRoutineSignature* sig = symbol->signature;
+    SLExprArray* args = &expr->value.call.arguments;
+
+    if (args->count != sig->parameter_count) {
+        SLSemanticFail(state, expr->span,
+                       "routine '%.*s' expects %zu argument(s), got %zu",
+                       (int) name.length, name.start,
+                       sig->parameter_count, args->count);
+        return NULL;
+    }
+
+    for (size_t i = 0; i < args->count; ++i) {
+        SLSemType* type = SLCheckValue(state, args->items[i]);
+        if (type == NULL) return NULL;
+        if (!SLAssignable(sig->parameter_types[i], type)) {
+            SLSemanticFail(state, args->items[i]->span,
+                           "argument %zu of '%.*s': expected '%s', got '%s'",
+                           i + 1, (int) name.length, name.start,
+                           SLTypeName(sig->parameter_types[i]), SLTypeName(type));
+            return NULL;
+        }
+    }
+
+    expr->symbol = symbol;
+    return sig->return_type;
+}
+
+static SLSemType* SLCheckExprInner(SLSemanticState* state, SLExpr* expr) {
+    switch (expr->type) {
+        case SL_EXPR_INTEGER: return SLPrimitiveType(state, SL_SEM_INTEGER);
+        case SL_EXPR_REAL:    return SLPrimitiveType(state, SL_SEM_REAL);
+        case SL_EXPR_BOOLEAN: return SLPrimitiveType(state, SL_SEM_BOOLEAN);
+
+        case SL_EXPR_NAME: {
+            SLSlice name = expr->value.name->value;
+            SLSymbol* symbol = SLScopeLookup(state->current_scope, name);
+            if (symbol == NULL) {
+                SLSemanticFail(state, expr->span, "unknown name '%.*s'",
+                               (int) name.length, name.start);
+                return NULL;
+            }
+            if (symbol->kind == SL_SYMBOL_TYPE
+                || symbol->kind == SL_SYMBOL_ROUTINE) {
+                SLSemanticFail(state, expr->span, "'%.*s' is not a variable",
+                               (int) name.length, name.start);
+                return NULL;
+            }
+            if (symbol->type == NULL) {
+                SLSemanticFail(state, expr->span,
+                               "type of '%.*s' is not known here",
+                               (int) name.length, name.start);
+                return NULL;
+            }
+            expr->symbol = symbol;
+            return symbol->type;
+        }
+
+        case SL_EXPR_UNARY: {
+            SLSemType* type = SLCheckValue(state, expr->value.unary.operand);
+            if (type == NULL) return NULL;
+            switch (SLUnaryOpKind(expr->value.unary.op)) {
+                case SL_OP_NEG: case SL_OP_POS:
+                    if (SLIsNumeric(type)) return type;
+                    break;
+                case SL_OP_NOT:
+                    if (type->kind == SL_SEM_BOOLEAN) return type;
+                    break;
+                default:
+                    SLSemanticFail(state, expr->span, "unknown unary operator");
+                    return NULL;
+            }
+            SLSemanticFail(state, expr->span, "invalid operand type '%s'",
+                           SLTypeName(type));
+            return NULL;
+        }
+
+        case SL_EXPR_BINARY: {
+            SLSemType* lt = SLCheckValue(state, expr->value.binary.left);
+            if (lt == NULL) return NULL;
+            SLSemType* rt = SLCheckValue(state, expr->value.binary.right);
+            if (rt == NULL) return NULL;
+            return SLCheckBinary(state, expr, lt, rt);
+        }
+
+        case SL_EXPR_CALL:
+            return SLCheckCall(state, expr);
+
+        case SL_EXPR_INDEX:
+        case SL_EXPR_FIELD:
+            SLSemanticFail(state, expr->span,
+                           "indexing and field access are not implemented yet");
+            return NULL;
+    }
+    SLSemanticFail(state, expr->span, "invalid expression");
+    return NULL;
+}
+
+SLSemType* SLCheckExpr(SLSemanticState* state, SLExpr* expr) {
+    if (state == NULL || state->error.has_error) return NULL;
+    SLSemType* type = SLCheckExprInner(state, expr);
+    expr->sem_type = type;
+    return type;
+}
+
+SLScope* SLScopePush(SLSemanticState* state) {
+    SLScope* scope = SLScopeNew(state, state->current_scope);
+    if (scope != NULL) state->current_scope = scope;
+    return scope;
+}
+
+void SLScopePop(SLSemanticState* state) {
+    state->current_scope = state->current_scope->parent;
+}
+
+SLSymbol* SLScopeDeclare(SLSemanticState* state, SLSlice name, SLSymbolKind kind,
+                         SLSemType* type, SLSpan span, bool is_mutable) {
+    if (SLScopeLookupLocal(state->current_scope, name) != NULL) {
+        SLSemanticFail(state, span, "duplicate declaration of '%.*s'",
+                       (int) name.length, name.start);
+        return NULL;
+    }
+    SLSymbol* symbol = calloc(1, sizeof(*symbol));
+    if (symbol == NULL) {
+        SLSemanticFail(state, span, "out of memory");
+        return NULL;
+    }
+    symbol->name = name;
+    symbol->kind = kind;
+    symbol->type = type;
+    symbol->span = span;
+    symbol->is_mutable = is_mutable;
+    if (!SLSymbolTablePush(&state->current_scope->symbols, symbol)) {
+        free(symbol);
+        SLSemanticFail(state, span, "out of memory");
+        return NULL;
+    }
+    return symbol;
+}
+
+static bool SLCheckBody(SLSemanticState* state, SLBody* body);
+
+static bool SLCheckScopedBody(SLSemanticState* state, SLBody* body) {
+    if (SLScopePush(state) == NULL) return false;
+    bool ok = SLCheckBody(state, body);
+    SLScopePop(state);
+    return ok;
+}
+
+static bool SLCheckCondition(SLSemanticState* state, SLExpr* cond) {
+    SLSemType* type = SLCheckValue(state, cond);
+    if (type == NULL) return false;
+    if (type->kind != SL_SEM_BOOLEAN) {
+        return SLSemanticFail(state, cond->span,
+                              "condition must be boolean, got '%s'",
+                              SLTypeName(type));
+    }
+    return true;
+}
+
+bool SLCheckStmt(SLSemanticState* state, SLStmt* stmt) {
+    if (state == NULL || state->error.has_error) return false;
+
+    switch (stmt->kind) {
+        case SL_STMT_ASSIGN: {
+            SLExpr* target = stmt->value.assign.target;
+            SLSemType* tt = SLCheckValue(state, target);
+            if (tt == NULL) return false;
+            if (target->type == SL_EXPR_NAME && !target->symbol->is_mutable) {
+                return SLSemanticFail(state, target->span,
+                                      "cannot assign to '%.*s'",
+                                      (int) target->symbol->name.length,
+                                      target->symbol->name.start);
+            }
+            SLSemType* vt = SLCheckValue(state, stmt->value.assign.value);
+            if (vt == NULL) return false;
+            if (!SLAssignable(tt, vt)) {
+                return SLSemanticFail(state, stmt->span,
+                                      "cannot assign '%s' to '%s'",
+                                      SLTypeName(vt), SLTypeName(tt));
+            }
+            return true;
+        }
+
+        case SL_STMT_CALL:
+            return SLCheckExpr(state, stmt->value.call) != NULL;
+
+        case SL_STMT_WHILE:
+            return SLCheckCondition(state, stmt->value.while_loop.condition)
+                && SLCheckScopedBody(state, &stmt->value.while_loop.body);
+
+        case SL_STMT_IF:
+            if (!SLCheckCondition(state, stmt->value.if_stmt.condition)) {
+                return false;
+            }
+            if (!SLCheckScopedBody(state, &stmt->value.if_stmt.then_body)) {
+                return false;
+            }
+            return !stmt->value.if_stmt.has_else
+                || SLCheckScopedBody(state, &stmt->value.if_stmt.else_body);
+
+        case SL_STMT_FOR: {
+            SLExpr* from = stmt->value.for_loop.from;
+            SLExpr* to = stmt->value.for_loop.to;
+            if (to == NULL) {
+                return SLSemanticFail(state, stmt->span,
+                                      "iteration over arrays is not implemented yet");
+            }
+            SLSemType* ft = SLCheckValue(state, from);
+            SLSemType* tt = ft != NULL ? SLCheckValue(state, to) : NULL;
+            if (ft == NULL || tt == NULL) return false;
+            if (ft->kind != SL_SEM_INTEGER || tt->kind != SL_SEM_INTEGER) {
+                return SLSemanticFail(state, stmt->span,
+                                      "for range bounds must be integer");
+            }
+            if (SLScopePush(state) == NULL) return false;
+            bool ok = SLScopeDeclare(state, stmt->value.for_loop.iterator->value,
+                                     SL_SYMBOL_ITERATOR, ft, stmt->span, false)
+                      != NULL
+                   && SLCheckBody(state, &stmt->value.for_loop.body);
+            SLScopePop(state);
+            return ok;
+        }
+
+        case SL_STMT_RETURN: {
+            SLExpr* value = stmt->value.return_value;
+            SLSemType* expected = state->current_return_type;
+            if (value == NULL) {
+                if (expected->kind != SL_SEM_VOID) {
+                    return SLSemanticFail(state, stmt->span,
+                                          "routine must return a value of type '%s'",
+                                          SLTypeName(expected));
+                }
+                return true;
+            }
+            if (expected->kind == SL_SEM_VOID) {
+                return SLSemanticFail(state, stmt->span,
+                                      "routine has no return type");
+            }
+            SLSemType* type = SLCheckValue(state, value);
+            if (type == NULL) return false;
+            if (!SLAssignable(expected, type)) {
+                return SLSemanticFail(state, value->span,
+                                      "cannot return '%s' from routine returning '%s'",
+                                      SLTypeName(type), SLTypeName(expected));
+            }
+            return true;
+        }
+    }
+    return SLSemanticFail(state, stmt->span, "invalid statement");
+}
+
+static bool SLCheckLocalDecl(SLSemanticState* state, SLDecl* decl) {
+    switch (decl->kind) {
+        case SL_DECL_VAR: {
+            SLToken* name = decl->value.var_decl.name;
+            SLSemType* type = NULL;
+
+            if (decl->value.var_decl.type != NULL) {
+                type = SLResolveType(state, decl->value.var_decl.type);
+                if (type == NULL) return false;
+            }
+            if (decl->value.var_decl.init != NULL) {
+                SLSemType* init = SLCheckValue(state, decl->value.var_decl.init);
+                if (init == NULL) return false;
+                if (type == NULL) {
+                    type = init;
+                } else if (!SLAssignable(type, init)) {
+                    return SLSemanticFail(state, decl->span,
+                        "cannot initialize '%.*s' of type '%s' with '%s'",
+                        (int) name->value.length, name->value.start,
+                        SLTypeName(type), SLTypeName(init));
+                }
+            }
+            if (type == NULL) {
+                return SLSemanticFail(state, decl->span,
+                    "variable '%.*s' needs a type or an initializer",
+                    (int) name->value.length, name->value.start);
+            }
+            SLSymbol* symbol = SLScopeDeclare(state, name->value, SL_SYMBOL_VAR,
+                                              type, decl->span, true);
+            if (symbol == NULL) return false;
+            symbol->declaration = decl;
+            return true;
+        }
+
+        case SL_DECL_TYPE: {
+            SLToken* name = decl->value.type_decl.name;
+            SLSymbol* symbol = SLScopeDeclare(state, name->value, SL_SYMBOL_TYPE,
+                                              NULL, decl->span, false);
+            if (symbol == NULL) return false;
+            symbol->declaration = decl;
+            SLType reference = {
+                .kind = SL_TYPE_NAMED,
+                .span = decl->span,
+                .value.name = name,
+            };
+            return SLResolveType(state, &reference) != NULL;
+        }
+
+        case SL_DECL_ROUTINE:
+            return SLSemanticFail(state, decl->span,
+                                  "nested routines are not supported");
+    }
+    return SLSemanticFail(state, decl->span, "invalid declaration");
+}
+
+static bool SLCheckBody(SLSemanticState* state, SLBody* body) {
+    for (size_t i = 0; i < body->count; ++i) {
+        SLBodyItem* item = &body->items[i];
+        bool ok = item->kind == SL_ITEM_DECL
+            ? SLCheckLocalDecl(state, item->value.decl)
+            : SLCheckStmt(state, item->value.stmt);
+        if (!ok) return false;
+    }
+    return true;
+}
+
+static bool SLAnalyzeRoutine(SLSemanticState* state, SLSymbol* symbol) {
+    SLDecl* decl = symbol->definition;
+    const SLRoutineSignature* sig = symbol->signature;
+    SLParamArray* params = &decl->value.routine.params;
+
+    if (SLScopePush(state) == NULL) return false;
+    state->current_routine = decl;
+    state->current_return_type = sig->return_type;
+
+    bool ok = true;
+    for (size_t i = 0; ok && i < params->count; ++i) {
+        ok = SLScopeDeclare(state, params->items[i].name->value, SL_SYMBOL_PARAM,
+                            sig->parameter_types[i], params->items[i].span, true)
+             != NULL;
+    }
+
+    if (ok) {
+        if (decl->value.routine.body_kind == SL_ROUTINE_BLOCK) {
+            ok = SLCheckBody(state, &decl->value.routine.body);
+        } else {
+            SLExpr* body = decl->value.routine.expr_body;
+            SLSemType* type = SLCheckExpr(state, body);
+            ok = type != NULL;
+            if (ok && !SLAssignable(sig->return_type, type)) {
+                ok = SLSemanticFail(state, body->span,
+                        "routine body has type '%s', expected '%s'",
+                        SLTypeName(type), SLTypeName(sig->return_type));
+            }
+        }
+    }
+
+    state->current_routine = NULL;
+    state->current_return_type = NULL;
+    SLScopePop(state);
+    return ok;
+}
+
+bool SLAnalyzeRoutines(SLSemanticState* state) {
+    if (state == NULL || state->error.has_error) return false;
+    state->current_scope = state->global_scope;
+
+    SLSymbolTable* table = &state->global_scope->symbols;
+    for (size_t i = 0; i < table->count; ++i) {
+        SLSymbol* symbol = table->items[i];
+        if (symbol->kind != SL_SYMBOL_ROUTINE || symbol->definition == NULL) {
+            continue;  // TODO
+        }
+        if (!SLAnalyzeRoutine(state, symbol)) return false;
+    }
+    return true;
+}
+
 void SLFreeSemanticState(SLSemanticState* state) {
     if (state == NULL) return;
 
-    if (state->global_scope != NULL) {
-        SLSymbolTable* table = &state->global_scope->symbols;
-        for (size_t i = 0; i < table->count; ++i) {
-            SLFreeSignature(table->items[i]->signature);
-            free(table->items[i]);
+    for (SLScope* scope = state->all_scopes; scope != NULL;) {
+        SLScope* next = scope->alloc_next;
+        for (size_t i = 0; i < scope->symbols.count; ++i) {
+            SLFreeSignature(scope->symbols.items[i]->signature);
+            free(scope->symbols.items[i]);
         }
-        
-        free(table->items);
-        free(state->global_scope);
+        free(scope->symbols.items);
+        free(scope);
+        scope = next;
     }
 
     *state = (SLSemanticState){0};

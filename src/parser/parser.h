@@ -68,10 +68,13 @@ typedef struct {
     SLTokenPosition end;
 } SLSpan;
 
-
+typedef struct SLSemType SLSemType;
+typedef struct SLSymbol SLSymbol;
 struct SLExpr {
     SLExprType type;
     SLSpan span;
+    SLSemType* sem_type;
+    SLSymbol* symbol;
 
     union {
         SLToken* number;
