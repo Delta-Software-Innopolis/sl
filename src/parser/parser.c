@@ -1,7 +1,7 @@
 #include "parser.h"
 
-static _Thread_local const char* prefix = "";
-static _Thread_local const char* branch = "";
+static const char* prefix = "";
+static const char* branch = "";
 
 static void SLFreeType(SLType* type);
 static void SLFreeDecl(SLDecl* decl);

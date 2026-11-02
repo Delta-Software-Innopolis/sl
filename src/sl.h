@@ -6,5 +6,6 @@
 #include "compiler_state/compiler_state.h"
 #include "lexer/lexer.h"
 #include "parser/parser.h"
+#include "semantics/semantics.h"
 
 #endif  // SL_H

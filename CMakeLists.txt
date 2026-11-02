@@ -24,6 +24,12 @@ add_executable(sl
 
     src/lexer/lexer.h
     src/lexer/lexer.c
+
+    src/semantics/symbol_table.h
+    src/semantics/symbol_table.c
+
+    src/semantics/semantics.h
+    src/semantics/semantics.c
 )
 
 

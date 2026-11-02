@@ -15,27 +15,51 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    int exit_code = 1;
+
+    SLTokenReader* reader = NULL;
+    SLProgram* program = NULL;
+    
+    SLSemanticState sem_state = {
+        .compiler_state = state,
+    };
+
     if (!SLScanText(state)) {
-        return 1;
+        goto cleanup;
     }
 
-    SLTokenReader* reader = SLInitTokenReader(state);
+    reader = SLInitTokenReader(state);
 
     if (reader == NULL) {
-        return 1;
+        goto cleanup;
     }
 
-    SLProgram* program = SLParseProgram(reader);
+    program = SLParseProgram(reader);
     if (program == NULL) {
         SLErrorPrint(&reader->error, stderr, state->filename,
                      state->text, (size_t) state->text_size);
-        return 1;
+        goto cleanup;
+    }
+
+    if (!SLAnalyzeProgram(&sem_state, program)) {
+        fprintf(stderr, "%s:%d:%d: error: %s\n", state->filename,
+                sem_state.error.span.begin.line,
+                sem_state.error.span.begin.position,
+                sem_state.error.message);
+        goto cleanup;
     }
 
     SLProgramDebugPrint(program);
+    exit_code = 0;
 
-
+cleanup:
+    SLFreeSemanticState(&sem_state);
+    SLFreeProgram(program);
+    free(reader);
+    free(state->tokens.items);
+    free(state->text);
+    fclose(state->input);
     free(state);
 
-    return 0;
+    return exit_code;
 }
