@@ -1,4 +1,4 @@
-routine sum_array(arr: array[] integer): integer =
+routine sum_array(arr: array[5] integer): integer =
     var total: integer = 0
     for x in arr loop
         total := total + x
@@ -6,13 +6,13 @@ routine sum_array(arr: array[] integer): integer =
     return total
 end
 
-routine fill_doubled(arr: array[] integer) =
-    for i in 0..(arr.size - 1) loop
-        arr[i] := i * 2
-    end
-end
+//routine fill_doubled(arr: array[5] integer) =
+//    for i in 0..(arr.size - 1) loop
+//        arr[i] := i * 2
+//    end
+//end
 
-routine count_true(flags: array[] boolean): integer =
+routine count_true(flags: array[4] boolean): integer =
     var count: integer = 0
     for f in flags loop
         if f then
@@ -32,10 +32,10 @@ routine main() =
     end
     print_integer(sum_array(numbers))
 
-    fill_doubled(numbers)
-    for n in numbers loop
-        print_integer(n)
-    end
+//    fill_doubled(numbers)
+//    for n in numbers loop
+//        print_integer(n)
+//    end
 
     var flags: array[4] boolean
     flags[0] := true

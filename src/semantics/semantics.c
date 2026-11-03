@@ -2,7 +2,7 @@
 
 #include <stdarg.h>
 
-#include "optimize.h"
+#include "consteval.h"
 
 static bool SLDeclareBuiltins(SLSemanticState* state);
 static SLSemType* SLTypeOfVarDecl(SLSemanticState* state, const SLDecl* decl,
@@ -225,7 +225,7 @@ static SLSemType* SLPrimitiveType(SLSemanticState* state, SLSemTypeKind kind) {
  * types are equal if:
  * primitives: same kind
  * arrays: same length and equal element types
- * records: same declaration)
+ * records: same declaration
  */
 static bool SLTypesEqual(const SLSemType* a, const SLSemType* b) {
     if (a == b) return true;

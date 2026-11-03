@@ -9,7 +9,8 @@ type Circle = record
 end
 
 routine print_point(p: Point) =
-    print_integer(p.x, p.y)
+    print_integer(p.x)
+    print_integer(p.y)
 end
 
 routine move_point(p: Point, dx: integer, dy: integer) =
@@ -45,7 +46,8 @@ routine main() =
     c.center.x := 0
     c.center.y := 0
     c.radius := 5.5
-    print_integer(c.center.x, c.center.y)
+    print_integer(c.center.x)
+    print_integer(c.center.y)
     print_real(c.radius)
 
     var points: array[3] Point

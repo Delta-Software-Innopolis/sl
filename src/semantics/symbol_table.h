@@ -34,8 +34,7 @@ typedef struct SLSemType {
         struct {
             SLSemField* fields;
             size_t count;
-            SLSlice name; /* name of the first `type X = record ...`, for
-                             messages */
+            SLSlice name;
         } record;
     } as;
 } SLSemType;
