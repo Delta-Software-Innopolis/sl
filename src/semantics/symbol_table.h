@@ -3,19 +3,41 @@
 
 #pragma once
 
-#include "../token/token.h"
 #include "../parser/parser.h"
+#include "../token/token.h"
 
 typedef enum {
     SL_SEM_INTEGER,
     SL_SEM_REAL,
     SL_SEM_BOOLEAN,
     SL_SEM_VOID,
+    SL_SEM_ARRAY,
+    SL_SEM_RECORD,
     SL_SEM_KIND_COUNT
 } SLSemTypeKind;
 
+typedef struct SLSemField {
+    SLSlice name;
+    struct SLSemType* type;
+} SLSemField;
+
 typedef struct SLSemType {
     SLSemTypeKind kind;
+    struct SLSemType* alloc_next;
+
+    union {
+        struct {
+            struct SLSemType* element;
+            long long length;
+        } array;
+
+        struct {
+            SLSemField* fields;
+            size_t count;
+            SLSlice name; /* name of the first `type X = record ...`, for
+                             messages */
+        } record;
+    } as;
 } SLSemType;
 
 typedef struct {
@@ -51,6 +73,8 @@ typedef struct SLSymbol {
 
     SLTypeResolutionState resolution_state;
     SLRoutineSignature* signature;
+
+    unsigned use_count;
 } SLSymbol;
 
 typedef struct {

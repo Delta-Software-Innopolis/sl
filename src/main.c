@@ -23,6 +23,7 @@ int main(int argc, char** argv) {
     SLSemanticState sem_state = {
         .compiler_state = state,
     };
+    SLOptStats opt_stats = {0};
 
     if (!SLScanText(state)) {
         goto cleanup;
@@ -36,15 +37,14 @@ int main(int argc, char** argv) {
 
     program = SLParseProgram(reader);
     if (program == NULL) {
-        SLErrorPrint(&reader->error, stderr, state->filename,
-                     state->text, (size_t) state->text_size);
+        SLErrorPrint(&reader->error, stderr, state->filename, state->text,
+                     (size_t)state->text_size);
         goto cleanup;
     }
 
-    if (!SLAnalyzeProgram(&sem_state, program)) {
+    if (!SLAnalyzeAndOptimize(&sem_state, program, &opt_stats)) {
         SLSemanticErrorPrint(&sem_state, stderr);
-        SLFreeSemanticState(&sem_state);
-        return 1;
+        goto cleanup;
     }
 
     SLProgramDebugPrint(program);

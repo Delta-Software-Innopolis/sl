@@ -3,8 +3,8 @@
 SLSymbol* SLSymbolTableFind(const SLSymbolTable* table, SLSlice name) {
     for (size_t i = 0; i < table->count; ++i) {
         SLSymbol* symbol = table->items[i];
-        if (symbol->name.length == name.length
-            && memcmp(symbol->name.start, name.start, name.length) == 0) {
+        if (symbol->name.length == name.length &&
+            memcmp(symbol->name.start, name.start, name.length) == 0) {
             return symbol;
         }
     }

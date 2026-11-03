@@ -69,7 +69,8 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
                 if (DEBUG) {
                     SLTokenDebugPrintSlice("NEW LINE", token.value.start,
-                                           token.value.length, line, realPosition);
+                                           token.value.length, line,
+                                           realPosition);
                 }
 
                 comment = false;
@@ -97,7 +98,8 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
                 if (DEBUG) {
                     SLTokenDebugPrintSlice("NEW LINE", token.value.start,
-                                           token.value.length, line, realPosition);
+                                           token.value.length, line,
+                                           realPosition);
                 }
 
                 line++;
@@ -163,7 +165,8 @@ bool SLScanText(SLCompilerState* state) {
 
                     if (DEBUG) {
                         SLTokenDebugPrintSlice("ASSIGNMENT", token.value.start,
-                                               token.value.length, line, position);
+                                               token.value.length, line,
+                                               position);
                     }
 
                     skipNextToken = true;
@@ -176,7 +179,8 @@ bool SLScanText(SLCompilerState* state) {
 
                     if (DEBUG) {
                         SLTokenDebugPrintSlice("COLON", token.value.start,
-                                               token.value.length, line, position);
+                                               token.value.length, line,
+                                               position);
                     }
                 }
 
@@ -191,7 +195,8 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("LEFT PARANTHESIS", token.value.start,
+                    SLTokenDebugPrintSlice("LEFT PARANTHESIS",
+                                           token.value.start,
                                            token.value.length, line, position);
                 }
 
@@ -206,7 +211,8 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("RIGHT PARANTHESIS", token.value.start,
+                    SLTokenDebugPrintSlice("RIGHT PARANTHESIS",
+                                           token.value.start,
                                            token.value.length, line, position);
                 }
 
@@ -221,8 +227,8 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("COMMA", token.value.start, token.value.length,
-                                           line, position);
+                    SLTokenDebugPrintSlice("COMMA", token.value.start,
+                                           token.value.length, line, position);
                 }
 
                 break;
@@ -253,7 +259,8 @@ bool SLScanText(SLCompilerState* state) {
 
                     if (DEBUG) {
                         SLTokenDebugPrintSlice("RANGE", token.value.start,
-                                               token.value.length, line, position);
+                                               token.value.length, line,
+                                               position);
                     }
 
                     skipNextToken = true;
@@ -265,8 +272,9 @@ bool SLScanText(SLCompilerState* state) {
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("DOT", token.value.start, token.value.length,
-                                               line, position);
+                        SLTokenDebugPrintSlice("DOT", token.value.start,
+                                               token.value.length, line,
+                                               position);
                     }
                 }
 
@@ -313,7 +321,8 @@ bool SLScanText(SLCompilerState* state) {
 
                     if (DEBUG) {
                         SLTokenDebugPrintSlice("INLINE FUNC", token.value.start,
-                                               token.value.length, line, position);
+                                               token.value.length, line,
+                                               position);
                     }
 
                     skipNextToken = true;
@@ -326,7 +335,8 @@ bool SLScanText(SLCompilerState* state) {
 
                     if (DEBUG) {
                         SLTokenDebugPrintSlice("EQUAL", token.value.start,
-                                               token.value.length, line, position);
+                                               token.value.length, line,
+                                               position);
                     }
                 }
 
@@ -343,7 +353,8 @@ bool SLScanText(SLCompilerState* state) {
 
                     if (DEBUG) {
                         SLTokenDebugPrintSlice("NOT EQUAL", token.value.start,
-                                               token.value.length, line, position);
+                                               token.value.length, line,
+                                               position);
                     }
 
                     skipNextToken = true;
@@ -358,7 +369,8 @@ bool SLScanText(SLCompilerState* state) {
 
                     if (DEBUG) {
                         SLTokenDebugPrintSlice("DIVIDE", token.value.start,
-                                               token.value.length, line, position);
+                                               token.value.length, line,
+                                               position);
                     }
                 }
 
@@ -374,8 +386,9 @@ bool SLScanText(SLCompilerState* state) {
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("LESS OR EQUAL", token.value.start,
-                                               token.value.length, line, position);
+                        SLTokenDebugPrintSlice(
+                            "LESS OR EQUAL", token.value.start,
+                            token.value.length, line, position);
                     }
 
                     skipNextToken = true;
@@ -388,7 +401,8 @@ bool SLScanText(SLCompilerState* state) {
 
                     if (DEBUG) {
                         SLTokenDebugPrintSlice("LESS", token.value.start,
-                                               token.value.length, line, position);
+                                               token.value.length, line,
+                                               position);
                     }
                 }
 
@@ -404,8 +418,9 @@ bool SLScanText(SLCompilerState* state) {
                     SLTokenArrayPush(&state->tokens, token);
 
                     if (DEBUG) {
-                        SLTokenDebugPrintSlice("GREATER OR EQUAL", token.value.start,
-                                               token.value.length, line, position);
+                        SLTokenDebugPrintSlice(
+                            "GREATER OR EQUAL", token.value.start,
+                            token.value.length, line, position);
                     }
 
                     skipNextToken = true;
@@ -418,7 +433,8 @@ bool SLScanText(SLCompilerState* state) {
 
                     if (DEBUG) {
                         SLTokenDebugPrintSlice("GREATER", token.value.start,
-                                               token.value.length, line, position);
+                                               token.value.length, line,
+                                               position);
                     }
                 }
 
@@ -433,8 +449,8 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("PLUS", token.value.start, token.value.length,
-                                           line, position);
+                    SLTokenDebugPrintSlice("PLUS", token.value.start,
+                                           token.value.length, line, position);
                 }
 
                 break;
@@ -448,8 +464,8 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("MINUS", token.value.start, token.value.length,
-                                           line, position);
+                    SLTokenDebugPrintSlice("MINUS", token.value.start,
+                                           token.value.length, line, position);
                 }
 
                 break;
@@ -459,7 +475,7 @@ bool SLScanText(SLCompilerState* state) {
                 token.value.start = &state->text[i];
                 token.value.length = 1;
                 token.type = SL_TOK_MULTIPLY;
-                
+
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
@@ -478,23 +494,23 @@ bool SLScanText(SLCompilerState* state) {
                 SLTokenArrayPush(&state->tokens, token);
 
                 if (DEBUG) {
-                    SLTokenDebugPrintSlice("MODULO", token.value.start, token.value.length,
-                                           line, position);
+                    SLTokenDebugPrintSlice("MODULO", token.value.start,
+                                           token.value.length, line, position);
                 }
 
                 break;
             }
 
             default:
-                printf("sl: %s:%d:%d: lexical error: unexpected token %c\n", state->filename, line, position, c);
+                printf("sl: %s:%d:%d: lexical error: unexpected token %c\n",
+                       state->filename, line, position, c);
                 return false;
                 break;
         }
     }
 
-    if (!SLResetBuffer(&state->tokens, buffer, &bufWriter, position,
-                       line, &start, &readingID, &readingInteger,
-                       &readingReal)) {
+    if (!SLResetBuffer(&state->tokens, buffer, &bufWriter, position, line,
+                       &start, &readingID, &readingInteger, &readingReal)) {
         return false;
     }
 

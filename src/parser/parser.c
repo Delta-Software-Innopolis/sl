@@ -3,9 +3,11 @@
 static const char* prefix = "";
 static const char* branch = "";
 
-static void SLFreeType(SLType* type);
-static void SLFreeDecl(SLDecl* decl);
-static void SLFreeStmt(SLStmt* stmt);
+void SLFreeType(SLType* type);
+void SLFreeDecl(SLDecl* decl);
+void SLFreeStmt(SLStmt* stmt);
+void SLFreeExpr(SLExpr* expr);
+void SLFreeBody(SLBody* body);
 
 static void SLErrorSetLocation(SLTokenReader* r, SLToken* at) {
     SLParseError* e = &r->error;
@@ -17,14 +19,15 @@ static void SLErrorSetLocation(SLTokenReader* r, SLToken* at) {
     } else if (r->tokens->count > 0) {
         SLToken* last = &r->tokens->items[r->tokens->count - 1];
         e->at = last->value.start != NULL
-            ? last->value.start + last->value.length : NULL;
+                    ? last->value.start + last->value.length
+                    : NULL;
         e->length = 1;
         e->position = last->position;
-        e->position.position += (int) last->value.length;
+        e->position.position += (int)last->value.length;
     } else {
         e->at = NULL;
         e->length = 1;
-        e->position = (SLTokenPosition) {0};
+        e->position = (SLTokenPosition){0};
     }
 }
 
@@ -59,24 +62,24 @@ void SLErrorExpected(SLTokenReader* r, SLToken* found, const char* expected,
                      "expected %s, found unexpected token", expected);
     } else {
         SLErrorRaise(r, found, file, line, func, "expected %s, found '%.*s'",
-                     expected, (int) found->value.length, found->value.start);
+                     expected, (int)found->value.length, found->value.start);
     }
 }
 
-void SLErrorTrace(SLTokenReader* r, const char* file, int line, const char* func) {
+void SLErrorTrace(SLTokenReader* r, const char* file, int line,
+                  const char* func) {
     SLParseError* e = &r->error;
 
     if (!e->has_error) {
-
-        SLToken* cur = r->cursor < r->tokens->count
-            ? &r->tokens->items[r->cursor] : NULL;
+        SLToken* cur =
+            r->cursor < r->tokens->count ? &r->tokens->items[r->cursor] : NULL;
         SLErrorRaise(r, cur, file, line, func,
                      "internal parser error: failure without diagnostic");
         return;
     }
 
     if (e->trace_count < SL_ERROR_MAX_TRACE) {
-        e->trace[e->trace_count++] = (SLTraceFrame) {file, func, line};
+        e->trace[e->trace_count++] = (SLTraceFrame){file, func, line};
     } else {
         e->trace_truncated = true;
     }
@@ -89,34 +92,40 @@ void SLErrorPrint(const SLParseError* e, FILE* out, const char* filename,
 
     fprintf(out, "error: %s\n", e->message);
 
-    uintptr_t at = (uintptr_t) e->at;
-    uintptr_t base = (uintptr_t) source;
-    bool located = source != NULL && e->at != NULL
-                && at >= base && at <= base + source_len;
+    uintptr_t at = (uintptr_t)e->at;
+    uintptr_t base = (uintptr_t)source;
+    bool located = source != NULL && e->at != NULL && at >= base &&
+                   at <= base + source_len;
 
     if (located) {
-        size_t offset = (size_t) (at - base);
+        size_t offset = (size_t)(at - base);
 
         size_t line_start = offset;
         while (line_start > 0 && source[line_start - 1] != '\n') line_start--;
         size_t line_end = offset;
-        while (line_end < source_len && source[line_end] != '\n'
-               && source[line_end] != '\r') line_end++;
+        while (line_end < source_len && source[line_end] != '\n' &&
+               source[line_end] != '\r')
+            line_end++;
         size_t line_no = 1;
-        for (size_t i = 0; i < line_start; ++i) if (source[i] == '\n') line_no++;
+        for (size_t i = 0; i < line_start; ++i)
+            if (source[i] == '\n') line_no++;
 
-        fprintf(out, "  --> %s:%zu:%zu\n", filename, line_no, offset - line_start + 1);
-        fprintf(out, "   | %.*s\n", (int) (line_end - line_start), source + line_start);
+        fprintf(out, "  --> %s:%zu:%zu\n", filename, line_no,
+                offset - line_start + 1);
+        fprintf(out, "   | %.*s\n", (int)(line_end - line_start),
+                source + line_start);
 
         fputs("   | ", out);
         for (size_t i = line_start; i < offset; ++i)
             fputc(source[i] == '\t' ? '\t' : ' ', out);
         size_t carets = e->length > 0 ? e->length : 1;
-        if (line_end > offset && offset + carets > line_end) carets = line_end - offset;
+        if (line_end > offset && offset + carets > line_end)
+            carets = line_end - offset;
         for (size_t i = 0; i < carets; ++i) fputc('^', out);
         fputc('\n', out);
     } else {
-        fprintf(out, "  --> %s:%d:%d\n", filename, e->position.line, e->position.position);
+        fprintf(out, "  --> %s:%d:%d\n", filename, e->position.line,
+                e->position.position);
     }
 
     fputs("\nParser traceback (most recent call last):\n", out);
@@ -128,7 +137,7 @@ void SLErrorPrint(const SLParseError* e, FILE* out, const char* filename,
     }
 }
 
-static void SLFreeExpr(SLExpr* expr) {
+void SLFreeExpr(SLExpr* expr) {
     if (expr == NULL) return;
 
     switch (expr->type) {
@@ -159,7 +168,7 @@ static void SLFreeExpr(SLExpr* expr) {
     free(expr);
 }
 
-static void SLFreeDeclArray(SLDeclArray* array) {
+void SLFreeDeclArray(SLDeclArray* array) {
     for (size_t i = 0; i < array->count; ++i) {
         SLFreeDecl(array->items[i]);
     }
@@ -167,7 +176,7 @@ static void SLFreeDeclArray(SLDeclArray* array) {
     *array = (SLDeclArray){0};
 }
 
-static void SLFreeBody(SLBody* body) {
+void SLFreeBody(SLBody* body) {
     for (size_t i = 0; i < body->count; ++i) {
         if (body->items[i].kind == SL_ITEM_DECL) {
             SLFreeDecl(body->items[i].value.decl);
@@ -179,7 +188,7 @@ static void SLFreeBody(SLBody* body) {
     *body = (SLBody){0};
 }
 
-static void SLFreeType(SLType* type) {
+void SLFreeType(SLType* type) {
     if (type == NULL) return;
 
     switch (type->kind) {
@@ -197,7 +206,7 @@ static void SLFreeType(SLType* type) {
     free(type);
 }
 
-static void SLFreeDecl(SLDecl* decl) {
+void SLFreeDecl(SLDecl* decl) {
     if (decl == NULL) return;
 
     switch (decl->kind) {
@@ -222,7 +231,7 @@ static void SLFreeDecl(SLDecl* decl) {
     free(decl);
 }
 
-static void SLFreeStmt(SLStmt* stmt) {
+void SLFreeStmt(SLStmt* stmt) {
     if (stmt == NULL) return;
 
     switch (stmt->kind) {
@@ -283,7 +292,7 @@ bool SLExprArrayPush(SLExprArray* list, SLExpr* expr) {
 SLTokenReader* SLInitTokenReader(SLCompilerState* state) {
     if (state == NULL) return NULL;
 
-    SLTokenReader* reader = (SLTokenReader*) calloc(1, sizeof(SLTokenReader));
+    SLTokenReader* reader = (SLTokenReader*)calloc(1, sizeof(SLTokenReader));
     if (reader == NULL) return NULL;
 
     reader->tokens = &state->tokens;
@@ -294,8 +303,8 @@ SLTokenReader* SLInitTokenReader(SLCompilerState* state) {
 }
 
 static void SLSkipNewlines(SLTokenReader* reader) {
-    while ((size_t) reader->cursor < reader->tokens->count
-           && reader->tokens->items[reader->cursor].type == SL_TOK_NEWLINE) {
+    while ((size_t)reader->cursor < reader->tokens->count &&
+           reader->tokens->items[reader->cursor].type == SL_TOK_NEWLINE) {
         reader->cursor++;
     }
 }
@@ -315,7 +324,7 @@ SLToken* SLGetNextToken(SLTokenReader* reader) {
 static SLToken* SLPeekToken(SLTokenReader* reader) {
     if (reader == NULL) return NULL;
     SLSkipNewlines(reader);
-    if ((size_t) reader->cursor >= reader->tokens->count) return NULL;
+    if ((size_t)reader->cursor >= reader->tokens->count) return NULL;
     return &reader->tokens->items[reader->cursor];
 }
 
@@ -340,12 +349,13 @@ static SLToken* SLRequireToken(SLTokenReader* reader, SLTokenType type,
     SLRequireToken((r), (type), (what), __FILE__, __LINE__, __func__)
 
 static void SLSkipSemicolons(SLTokenReader* reader) {
-    while (SLMatchToken(reader, SL_TOK_SEMICOLON) != NULL) {}
+    while (SLMatchToken(reader, SL_TOK_SEMICOLON) != NULL) {
+    }
 }
 
 static SLTokenPosition SLTokenEnd(const SLToken* tok) {
     SLTokenPosition end = tok->position;
-    end.position += (int) tok->value.length;
+    end.position += (int)tok->value.length;
     return end;
 }
 
@@ -367,19 +377,19 @@ static bool SLStartsExpr(const SLToken* tok) {
     }
 }
 
-#define SL_DEFINE_PUSH(Name, ArrayType, ItemType)                           \
-    static bool Name(ArrayType* list, ItemType item) {                      \
-        if (list->count == list->capacity) {                                \
-            size_t new_capacity = list->capacity == 0                       \
-                ? 8 : list->capacity * 2;                                   \
-            ItemType* new_items =                                           \
-                realloc(list->items, new_capacity * sizeof(*new_items));    \
-            if (new_items == NULL) return false;                            \
-            list->items = new_items;                                        \
-            list->capacity = new_capacity;                                  \
-        }                                                                   \
-        list->items[list->count++] = item;                                  \
-        return true;                                                        \
+#define SL_DEFINE_PUSH(Name, ArrayType, ItemType)                        \
+    static bool Name(ArrayType* list, ItemType item) {                   \
+        if (list->count == list->capacity) {                             \
+            size_t new_capacity =                                        \
+                list->capacity == 0 ? 8 : list->capacity * 2;            \
+            ItemType* new_items =                                        \
+                realloc(list->items, new_capacity * sizeof(*new_items)); \
+            if (new_items == NULL) return false;                         \
+            list->items = new_items;                                     \
+            list->capacity = new_capacity;                               \
+        }                                                                \
+        list->items[list->count++] = item;                               \
+        return true;                                                     \
     }
 
 SL_DEFINE_PUSH(SLDeclArrayPush, SLDeclArray, SLDecl*)
@@ -402,11 +412,10 @@ SLExpr* SLParseExpr(SLTokenReader* reader) {
         return relation;
     }
 
-    if (logical_op->type != SL_TOK_AND
-        && logical_op->type != SL_TOK_OR
-        && logical_op->type != SL_TOK_XOR) {
-            reader->cursor--;
-            return relation;
+    if (logical_op->type != SL_TOK_AND && logical_op->type != SL_TOK_OR &&
+        logical_op->type != SL_TOK_XOR) {
+        reader->cursor--;
+        return relation;
     }
 
     SLExpr* second_rel = SLParseExpr(reader);
@@ -417,7 +426,7 @@ SLExpr* SLParseExpr(SLTokenReader* reader) {
         return NULL;
     }
 
-    SLExpr* ret = (SLExpr*) malloc(sizeof(SLExpr));
+    SLExpr* ret = (SLExpr*)malloc(sizeof(SLExpr));
     ret->type = SL_EXPR_BINARY;
     ret->value.binary.left = relation;
     ret->value.binary.op = logical_op;
@@ -428,7 +437,6 @@ SLExpr* SLParseExpr(SLTokenReader* reader) {
 
     return ret;
 }
-
 
 SLExpr* SLParseRelation(SLTokenReader* reader) {
     SLExpr* simple = SLParseSimple(reader);
@@ -444,14 +452,12 @@ SLExpr* SLParseRelation(SLTokenReader* reader) {
         return simple;
     }
 
-    if (comparator->type != SL_TOK_LESS
-        && comparator->type != SL_TOK_LESS_EQ
-        && comparator->type != SL_TOK_GREATER
-        && comparator->type != SL_TOK_GREATER_EQ
-        && comparator->type != SL_TOK_EQUAL
-        && comparator->type != SL_TOK_NOT_EQ) {
-            reader->cursor--;
-            return simple;
+    if (comparator->type != SL_TOK_LESS && comparator->type != SL_TOK_LESS_EQ &&
+        comparator->type != SL_TOK_GREATER &&
+        comparator->type != SL_TOK_GREATER_EQ &&
+        comparator->type != SL_TOK_EQUAL && comparator->type != SL_TOK_NOT_EQ) {
+        reader->cursor--;
+        return simple;
     }
 
     SLExpr* second_simple = SLParseSimple(reader);
@@ -463,7 +469,7 @@ SLExpr* SLParseRelation(SLTokenReader* reader) {
         return NULL;
     }
 
-    SLExpr* ret = (SLExpr*) malloc(sizeof(SLExpr));
+    SLExpr* ret = (SLExpr*)malloc(sizeof(SLExpr));
     ret->type = SL_EXPR_BINARY;
 
     ret->value.binary.left = simple;
@@ -487,16 +493,15 @@ SLExpr* SLParseSimple(SLTokenReader* reader) {
     SLExpr* ret = NULL;
 
     while (true) {
-        SLToken* operator = SLGetNextToken(reader);
+        SLToken* operator= SLGetNextToken(reader);
 
-        if (operator == NULL) {
+        if (operator== NULL) {
             return ret == NULL ? factor : ret;
         }
 
-        if (operator->type != SL_TOK_PLUS
-            && operator->type != SL_TOK_MINUS) {
-                reader->cursor--;
-                return ret == NULL ? factor : ret;
+        if (operator->type != SL_TOK_PLUS && operator->type != SL_TOK_MINUS) {
+            reader->cursor--;
+            return ret == NULL ? factor : ret;
         }
 
         SLExpr* second_factor = SLParseFactor(reader);
@@ -508,7 +513,7 @@ SLExpr* SLParseSimple(SLTokenReader* reader) {
             return NULL;
         }
 
-        SLExpr* newLeftPart = (SLExpr*) malloc(sizeof(SLExpr));
+        SLExpr* newLeftPart = (SLExpr*)malloc(sizeof(SLExpr));
         newLeftPart->type = SL_EXPR_BINARY;
 
         newLeftPart->value.binary.left = ret == NULL ? factor : ret;
@@ -519,9 +524,7 @@ SLExpr* SLParseSimple(SLTokenReader* reader) {
         newLeftPart->span.end = second_factor->span.end;
 
         ret = newLeftPart;
-
     }
-
 }
 
 SLExpr* SLParseFactor(SLTokenReader* reader) {
@@ -535,9 +538,9 @@ SLExpr* SLParseFactor(SLTokenReader* reader) {
     SLExpr* ret = NULL;
 
     while (true) {
-        SLToken* operator = SLGetNextToken(reader);
+        SLToken* operator= SLGetNextToken(reader);
 
-        if (operator == NULL) {
+        if (operator== NULL) {
             if (ret == NULL) {
                 return summand;
             } else {
@@ -545,11 +548,11 @@ SLExpr* SLParseFactor(SLTokenReader* reader) {
             }
         }
 
-        if (operator->type != SL_TOK_MULTIPLY
-            && operator->type != SL_TOK_DIVIDE
-            && operator->type != SL_TOK_MODULO) {
-                reader->cursor--;
-                return ret == NULL ? summand : ret;
+        if (operator->type !=
+            SL_TOK_MULTIPLY && operator->type !=
+            SL_TOK_DIVIDE && operator->type != SL_TOK_MODULO) {
+            reader->cursor--;
+            return ret == NULL ? summand : ret;
         }
 
         SLExpr* second_summand = SLParseSummand(reader);
@@ -561,7 +564,7 @@ SLExpr* SLParseFactor(SLTokenReader* reader) {
             return NULL;
         }
 
-        SLExpr* newLeftPart = (SLExpr*) malloc(sizeof(SLExpr));
+        SLExpr* newLeftPart = (SLExpr*)malloc(sizeof(SLExpr));
         newLeftPart->type = SL_EXPR_BINARY;
 
         newLeftPart->value.binary.left = ret == NULL ? summand : ret;
@@ -572,7 +575,6 @@ SLExpr* SLParseFactor(SLTokenReader* reader) {
         newLeftPart->span.end = second_summand->span.end;
 
         ret = newLeftPart;
-
     }
 }
 
@@ -595,9 +597,8 @@ SLExpr* SLParseUnary(SLTokenReader* reader) {
         return NULL;
     }
 
-    if (unaryOp->type != SL_TOK_PLUS
-        && unaryOp->type != SL_TOK_MINUS
-        && unaryOp->type != SL_TOK_NOT) {
+    if (unaryOp->type != SL_TOK_PLUS && unaryOp->type != SL_TOK_MINUS &&
+        unaryOp->type != SL_TOK_NOT) {
         reader->cursor--;
         SL_RETURN_TRACED(reader, SLParsePrimary(reader));
     }
@@ -608,7 +609,7 @@ SLExpr* SLParseUnary(SLTokenReader* reader) {
         SL_TRACE(reader);
         return NULL;
     }
-    SLExpr* ret = (SLExpr*) malloc(sizeof(SLExpr));
+    SLExpr* ret = (SLExpr*)malloc(sizeof(SLExpr));
     ret->type = SL_EXPR_UNARY;
 
     ret->value.unary.op = unaryOp;
@@ -621,7 +622,6 @@ SLExpr* SLParseUnary(SLTokenReader* reader) {
 }
 
 SLExpr* SLParsePrimary(SLTokenReader* reader) {
-
     SLToken* tok = SLGetNextToken(reader);
 
     if (tok == NULL) {
@@ -629,7 +629,7 @@ SLExpr* SLParsePrimary(SLTokenReader* reader) {
         return NULL;
     }
 
-    SLExpr* ret = (SLExpr*) malloc(sizeof(SLExpr));
+    SLExpr* ret = (SLExpr*)malloc(sizeof(SLExpr));
 
     if (tok->type == SL_TOK_INTEGER_LIT) {
         ret->type = SL_EXPR_INTEGER;
@@ -674,7 +674,7 @@ SLExpr* SLParsePrimary(SLTokenReader* reader) {
 
     ret->span.begin = tok->position;
     ret->span.end = tok->position;
-    ret->span.end.position += (int) tok->value.length;
+    ret->span.end.position += (int)tok->value.length;
 
     return ret;
 }
@@ -692,14 +692,14 @@ SLExpr* SLParseIDPrimary(SLTokenReader* reader) {
         return NULL;
     }
 
-    SLExpr* ret = (SLExpr*) malloc(sizeof(SLExpr));
+    SLExpr* ret = (SLExpr*)malloc(sizeof(SLExpr));
     if (ret == NULL) return NULL;
 
     ret->type = SL_EXPR_NAME;
     ret->value.name = id;
     ret->span.begin = id->position;
     ret->span.end = id->position;
-    ret->span.end.position += (int) id->value.length;
+    ret->span.end.position += (int)id->value.length;
 
     SLToken* next = SLGetNextToken(reader);
     if (next != NULL) reader->cursor--;
@@ -717,7 +717,7 @@ SLExpr* SLParseIDPrimary(SLTokenReader* reader) {
 
         SLToken* closePar = &reader->tokens->items[reader->cursor - 1];
         ret->span.end = closePar->position;
-        ret->span.end.position += (int) closePar->value.length;
+        ret->span.end.position += (int)closePar->value.length;
         return ret;
     }
 
@@ -761,7 +761,8 @@ bool SLParseCallTail(SLTokenReader* reader, SLExprArray* list) {
         }
 
         if (!SLExprArrayPush(list, arg)) {
-            SL_RAISE(reader, NULL, "out of memory while parsing call arguments");
+            SL_RAISE(reader, NULL,
+                     "out of memory while parsing call arguments");
             SLFreeExpr(arg);
             return false;
         }
@@ -809,7 +810,7 @@ SLExpr* SLParseModifiableTail(SLTokenReader* reader, SLExpr* base) {
                 return NULL;
             }
 
-            SLExpr* ret = (SLExpr*) malloc(sizeof(SLExpr));
+            SLExpr* ret = (SLExpr*)malloc(sizeof(SLExpr));
             if (ret == NULL) {
                 SLFreeExpr(base);
                 return NULL;
@@ -820,7 +821,7 @@ SLExpr* SLParseModifiableTail(SLTokenReader* reader, SLExpr* base) {
             ret->value.field.name = id;
             ret->span.begin = base->span.begin;
             ret->span.end = id->position;
-            ret->span.end.position += (int) id->value.length;
+            ret->span.end.position += (int)id->value.length;
             base = ret;
         } else if (dotOrBracket->type == SL_TOK_LBRACKET) {
             SLExpr* expr = SLParseExpr(reader);
@@ -839,7 +840,7 @@ SLExpr* SLParseModifiableTail(SLTokenReader* reader, SLExpr* base) {
                 return NULL;
             }
 
-            SLExpr* ret = (SLExpr*) malloc(sizeof(SLExpr));
+            SLExpr* ret = (SLExpr*)malloc(sizeof(SLExpr));
             if (ret == NULL) {
                 SLFreeExpr(expr);
                 SLFreeExpr(base);
@@ -851,7 +852,7 @@ SLExpr* SLParseModifiableTail(SLTokenReader* reader, SLExpr* base) {
             ret->value.index.index = expr;
             ret->span.begin = base->span.begin;
             ret->span.end = closeBracket->position;
-            ret->span.end.position += (int) closeBracket->value.length;
+            ret->span.end.position += (int)closeBracket->value.length;
             base = ret;
         } else {
             reader->cursor--;
@@ -990,7 +991,8 @@ SLType* SLParseRecordType(SLTokenReader* reader) {
         if (next != NULL && next->type == SL_TOK_END) break;
 
         if (next == NULL || next->type != SL_TOK_VAR) {
-            SL_EXPECTED(reader, next, "field declaration ('var') or 'end' in record");
+            SL_EXPECTED(reader, next,
+                        "field declaration ('var') or 'end' in record");
             SLFreeType(ret);
             return NULL;
         }
@@ -1023,7 +1025,8 @@ SLDecl* SLParseVarDecl(SLTokenReader* reader) {
     SLToken* kw = SL_REQUIRE(reader, SL_TOK_VAR, "'var'");
     if (kw == NULL) return NULL;
 
-    SLToken* name = SL_REQUIRE(reader, SL_TOK_IDENTIFIER, "variable name after 'var'");
+    SLToken* name =
+        SL_REQUIRE(reader, SL_TOK_IDENTIFIER, "variable name after 'var'");
     if (name == NULL) return NULL;
 
     SLType* type = NULL;
@@ -1054,7 +1057,8 @@ SLDecl* SLParseVarDecl(SLTokenReader* reader) {
             return NULL;
         }
     } else {
-        SL_EXPECTED(reader, SLPeekToken(reader), "':' or '=' after variable name");
+        SL_EXPECTED(reader, SLPeekToken(reader),
+                    "':' or '=' after variable name");
         return NULL;
     }
 
@@ -1081,7 +1085,8 @@ SLDecl* SLParseTypeDecl(SLTokenReader* reader) {
     SLToken* kw = SL_REQUIRE(reader, SL_TOK_TYPE, "'type'");
     if (kw == NULL) return NULL;
 
-    SLToken* name = SL_REQUIRE(reader, SL_TOK_IDENTIFIER, "type name after 'type'");
+    SLToken* name =
+        SL_REQUIRE(reader, SL_TOK_IDENTIFIER, "type name after 'type'");
     if (name == NULL) return NULL;
 
     if (SL_REQUIRE(reader, SL_TOK_EQUAL, "'=' after type name") == NULL) {
@@ -1131,7 +1136,8 @@ bool SLParseParams(SLTokenReader* reader, SLParamArray* params) {
         SLToken* name = SL_REQUIRE(reader, SL_TOK_IDENTIFIER, "parameter name");
         if (name == NULL) return false;
 
-        if (SL_REQUIRE(reader, SL_TOK_COLON, "':' after parameter name") == NULL) {
+        if (SL_REQUIRE(reader, SL_TOK_COLON, "':' after parameter name") ==
+            NULL) {
             return false;
         }
 
@@ -1145,7 +1151,7 @@ bool SLParseParams(SLTokenReader* reader, SLParamArray* params) {
         SLParam param = {
             .name = name,
             .type = type,
-            .span = { .begin = name->position, .end = type->span.end },
+            .span = {.begin = name->position, .end = type->span.end},
         };
 
         if (!SLParamArrayPush(params, param)) {
@@ -1162,7 +1168,8 @@ SLDecl* SLParseRoutineDecl(SLTokenReader* reader) {
     SLToken* kw = SL_REQUIRE(reader, SL_TOK_ROUTINE, "'routine'");
     if (kw == NULL) return NULL;
 
-    SLToken* name = SL_REQUIRE(reader, SL_TOK_IDENTIFIER, "routine name after 'routine'");
+    SLToken* name =
+        SL_REQUIRE(reader, SL_TOK_IDENTIFIER, "routine name after 'routine'");
     if (name == NULL) return NULL;
 
     if (SL_REQUIRE(reader, SL_TOK_LPAR, "'(' after routine name") == NULL) {
@@ -1249,9 +1256,8 @@ bool SLParseBody(SLTokenReader* reader, SLBody* body) {
         SLSkipSemicolons(reader);
         SLToken* next = SLPeekToken(reader);
 
-        if (next == NULL
-            || next->type == SL_TOK_END
-            || next->type == SL_TOK_ELSE) {
+        if (next == NULL || next->type == SL_TOK_END ||
+            next->type == SL_TOK_ELSE) {
             return true;
         }
 
@@ -1379,7 +1385,8 @@ SLStmt* SLParseWhile(SLTokenReader* reader) {
         goto fail;
     }
 
-    if (SL_REQUIRE(reader, SL_TOK_LOOP, "'loop' after while condition") == NULL) {
+    if (SL_REQUIRE(reader, SL_TOK_LOOP, "'loop' after while condition") ==
+        NULL) {
         goto fail;
     }
 
@@ -1403,7 +1410,8 @@ SLStmt* SLParseFor(SLTokenReader* reader) {
     SLToken* kw = SL_REQUIRE(reader, SL_TOK_FOR, "'for'");
     if (kw == NULL) return NULL;
 
-    SLToken* iterator = SL_REQUIRE(reader, SL_TOK_IDENTIFIER, "loop variable after 'for'");
+    SLToken* iterator =
+        SL_REQUIRE(reader, SL_TOK_IDENTIFIER, "loop variable after 'for'");
     if (iterator == NULL) return NULL;
 
     if (SL_REQUIRE(reader, SL_TOK_IN, "'in' after loop variable") == NULL) {
@@ -1560,9 +1568,8 @@ SLProgram* SLParseProgram(SLTokenReader* reader) {
 
         if (tok == NULL) break;
 
-        SLDecl* decl = tok->type == SL_TOK_ROUTINE
-            ? SLParseRoutineDecl(reader)
-            : SLParseSimpleDecl(reader);
+        SLDecl* decl = tok->type == SL_TOK_ROUTINE ? SLParseRoutineDecl(reader)
+                                                   : SLParseSimpleDecl(reader);
 
         if (decl == NULL) {
             SL_TRACE(reader);
@@ -1646,7 +1653,7 @@ void SLExprDebugPrint(SLExpr* expr) {
             child_count = 1;
             break;
         default:
-            printf("UNKNOWN (%d)\n", (int) expr->type);
+            printf("UNKNOWN (%d)\n", (int)expr->type);
             return;
     }
 
@@ -1667,8 +1674,9 @@ void SLExprDebugPrint(SLExpr* expr) {
 
     const char* saved_prefix = prefix;
     const char* saved_branch = branch;
-    const char* continuation = branch[0] == '\0' ? ""
-        : branch[0] == '|' ? "|   " : "    ";
+    const char* continuation = branch[0] == '\0'  ? ""
+                               : branch[0] == '|' ? "|   "
+                                                  : "    ";
     size_t prefix_length = strlen(prefix);
     size_t continuation_length = strlen(continuation);
     char* child_prefix = malloc(prefix_length + continuation_length + 1);
@@ -1700,8 +1708,8 @@ static void SLDbgLabel(const char* label, const SLToken* token) {
     fputs(branch, stdout);
     fputs(label, stdout);
 
-    if (token != NULL && token->value.start != NULL
-        && token->value.length > 0) {
+    if (token != NULL && token->value.start != NULL &&
+        token->value.length > 0) {
         putchar(' ');
         fwrite(token->value.start, 1, token->value.length, stdout);
     }
@@ -1711,8 +1719,9 @@ static void SLDbgLabel(const char* label, const SLToken* token) {
 
 // Call right after printing a node's own line, before printing its children.
 static bool SLDbgOpen(SLDbgScope* scope) {
-    const char* continuation = branch[0] == '\0' ? ""
-        : branch[0] == '|' ? "|   " : "    ";
+    const char* continuation = branch[0] == '\0'  ? ""
+                               : branch[0] == '|' ? "|   "
+                                                  : "    ";
     size_t prefix_length = strlen(prefix);
     size_t continuation_length = strlen(continuation);
 
@@ -1845,7 +1854,7 @@ void SLTypeDebugPrint(SLType* type) {
         }
     }
 
-    printf("UNKNOWN TYPE (%d)\n", (int) type->kind);
+    printf("UNKNOWN TYPE (%d)\n", (int)type->kind);
 }
 
 void SLDeclDebugPrint(SLDecl* decl) {
@@ -1897,14 +1906,13 @@ void SLDeclDebugPrint(SLDecl* decl) {
             SLType* return_type = decl->value.routine.return_type;
             SLRoutineBodyKind body_kind = decl->value.routine.body_kind;
 
-            size_t count = params->count
-                + (return_type != NULL)
-                + (body_kind != SL_ROUTINE_FORWARD);
+            size_t count = params->count + (return_type != NULL) +
+                           (body_kind != SL_ROUTINE_FORWARD);
             size_t i = 0;
 
-            SLDbgLabel(body_kind == SL_ROUTINE_FORWARD
-                           ? "ROUTINE_FORWARD" : "ROUTINE",
-                       decl->value.routine.name);
+            SLDbgLabel(
+                body_kind == SL_ROUTINE_FORWARD ? "ROUTINE_FORWARD" : "ROUTINE",
+                decl->value.routine.name);
 
             if (count == 0) return;
             if (!SLDbgOpen(&scope)) return;
@@ -1933,7 +1941,7 @@ void SLDeclDebugPrint(SLDecl* decl) {
         }
     }
 
-    printf("UNKNOWN DECL (%d)\n", (int) decl->kind);
+    printf("UNKNOWN DECL (%d)\n", (int)decl->kind);
 }
 
 void SLStmtDebugPrint(SLStmt* stmt) {
@@ -2036,7 +2044,7 @@ void SLStmtDebugPrint(SLStmt* stmt) {
             return;
     }
 
-    printf("UNKNOWN STMT (%d)\n", (int) stmt->kind);
+    printf("UNKNOWN STMT (%d)\n", (int)stmt->kind);
 }
 
 void SLProgramDebugPrint(SLProgram* program) {

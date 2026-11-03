@@ -28,8 +28,15 @@ add_executable(sl
     src/semantics/symbol_table.h
     src/semantics/symbol_table.c
 
-    src/semantics/semantics.h
+    src/semantics/checks.c
+    src/semantics/consteval.c
+    src/semantics/consteval.h
+    src/semantics/optimize.c
+    src/semantics/optimize.h
     src/semantics/semantics.c
+    src/semantics/semantics.h
+    src/semantics/symbol_table.c
+    src/semantics/symbol_table.h
 )
 
 
@@ -47,14 +54,8 @@ target_compile_options(sl PRIVATE
     ${LLVM_DEFINITIONS_LIST}
 )
 
-
-llvm_map_components_to_libnames(LLVM_LIBS
-    core
-    support
-)
-
 target_link_libraries(sl PRIVATE
-    ${LLVM_LIBS}
+    LLVM
 )
 
 

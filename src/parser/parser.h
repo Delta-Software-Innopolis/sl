@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include <stdio.h>
-#include <stdbool.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "../compiler_state/compiler_state.h"
 #include "../token/token.h"
@@ -53,7 +53,6 @@ typedef enum {
     SL_EXPR_INDEX,
     SL_EXPR_FIELD
 } SLExprType;
-
 
 typedef struct {
     SLExpr** items;
@@ -145,9 +144,7 @@ struct SLType {
     } value;
 };
 
-typedef enum {
-    SL_ITEM_DECL, SL_ITEM_STMT
-} SLBodyItemKind;
+typedef enum { SL_ITEM_DECL, SL_ITEM_STMT } SLBodyItemKind;
 
 typedef struct {
     SLBodyItemKind kind;
@@ -175,11 +172,7 @@ typedef struct {
     size_t capacity;
 } SLParamArray;
 
-typedef enum {
-    SL_DECL_VAR,
-    SL_DECL_TYPE,
-    SL_DECL_ROUTINE
-} SLDeclKind;
+typedef enum { SL_DECL_VAR, SL_DECL_TYPE, SL_DECL_ROUTINE } SLDeclKind;
 
 typedef enum {
     SL_ROUTINE_FORWARD,
@@ -194,8 +187,8 @@ struct SLDecl {
     union {
         struct {
             SLToken* name;
-            SLType* type;   // NULL if omitted (var x = expr)
-            SLExpr* init;   // NULL if omitted (var x : T)
+            SLType* type;  // NULL if omitted (var x = expr)
+            SLExpr* init;  // NULL if omitted (var x : T)
         } var_decl;
 
         struct {
@@ -206,10 +199,10 @@ struct SLDecl {
         struct {
             SLToken* name;
             SLParamArray params;
-            SLType* return_type;       // NULL if none
+            SLType* return_type;  // NULL if none
             SLRoutineBodyKind body_kind;
-            SLBody body;               // used when SL_ROUTINE_BLOCK
-            SLExpr* expr_body;         // used when SL_ROUTINE_EXPR
+            SLBody body;        // used when SL_ROUTINE_BLOCK
+            SLExpr* expr_body;  // used when SL_ROUTINE_EXPR
         } routine;
     } value;
 };
@@ -233,7 +226,7 @@ struct SLStmt {
             SLExpr* value;
         } assign;
 
-        SLExpr* call;        // an SL_EXPR_CALL
+        SLExpr* call;  // an SL_EXPR_CALL
 
         struct {
             SLExpr* condition;
@@ -243,7 +236,7 @@ struct SLStmt {
         struct {
             SLToken* iterator;
             SLExpr* from;
-            SLExpr* to;      // NULL if the range is a single expr
+            SLExpr* to;  // NULL if the range is a single expr
             bool reverse;
             SLBody body;
         } for_loop;
@@ -255,7 +248,7 @@ struct SLStmt {
             bool has_else;
         } if_stmt;
 
-        SLExpr* return_value; // NULL for bare "return"
+        SLExpr* return_value;  // NULL for bare "return"
     } value;
 };
 
@@ -267,6 +260,12 @@ SLTokenReader* SLInitTokenReader(SLCompilerState* state);
 SLToken* SLGetNextToken(SLTokenReader* reader);
 
 SLProgram* SLParseProgram(SLTokenReader* reader);
+
+void SLFreeType(SLType* type);
+void SLFreeDecl(SLDecl* decl);
+void SLFreeStmt(SLStmt* stmt);
+void SLFreeExpr(SLExpr* expr);
+void SLFreeBody(SLBody* body);
 void SLFreeProgram(SLProgram* program);
 
 SLExpr* SLParseExpr(SLTokenReader* reader);
@@ -278,26 +277,36 @@ SLExpr* SLParseUnary(SLTokenReader* reader);
 SLExpr* SLParsePrimary(SLTokenReader* reader);
 SLExpr* SLParseIDPrimary(SLTokenReader* reader);
 bool SLParseCallTail(SLTokenReader* reader, SLExprArray* list);
-// Takes ownership of base; frees it if parsing the tail fails.
 SLExpr* SLParseModifiableTail(SLTokenReader* reader, SLExpr* base);
 SLToken* SLParseSign(SLTokenReader* reader);
 
 void SLErrorRaise(SLTokenReader* r, SLToken* at, const char* file, int line,
-        const char* func, const char* fmt, ...);
+                  const char* func, const char* fmt, ...);
 void SLErrorExpected(SLTokenReader* r, SLToken* found, const char* expected,
-        const char* file, int line, const char* func);
-void SLErrorTrace(SLTokenReader* r, const char* file, int line, const char* func);
+                     const char* file, int line, const char* func);
+void SLErrorTrace(SLTokenReader* r, const char* file, int line,
+                  const char* func);
 void SLErrorPrint(const SLParseError* e, FILE* out, const char* filename,
-        const char* source, size_t source_len);
+                  const char* source, size_t source_len);
 
-#define SL_RAISE(r, at, ...) SLErrorRaise((r), (at), __FILE__, __LINE__, __func__, __VA_ARGS__)
-#define SL_EXPECTED(r, found, what) SLErrorExpected((r), (found), (what), __FILE__, __LINE__, __func__)
+#define SL_RAISE(r, at, ...) \
+    SLErrorRaise((r), (at), __FILE__, __LINE__, __func__, __VA_ARGS__)
+#define SL_EXPECTED(r, found, what) \
+    SLErrorExpected((r), (found), (what), __FILE__, __LINE__, __func__)
 #define SL_TRACE(r) SLErrorTrace((r), __FILE__, __LINE__, __func__)
 
-#define SL_RETURN_TRACED(r, call) \
-    do { SLExpr* _res = (call); if (_res == NULL) SL_TRACE(r); return _res; } while (0)
+#define SL_RETURN_TRACED(r, call)      \
+    do {                               \
+        SLExpr* _res = (call);         \
+        if (_res == NULL) SL_TRACE(r); \
+        return _res;                   \
+    } while (0)
 #define SL_RETURN_TRACED_T(T, r, call) \
-    do { T* _res = (call); if (_res == NULL) SL_TRACE(r); return _res; } while (0)
+    do {                               \
+        T* _res = (call);              \
+        if (_res == NULL) SL_TRACE(r); \
+        return _res;                   \
+    } while (0)
 
 SLDecl* SLParseSimpleDecl(SLTokenReader* reader);
 SLDecl* SLParseVarDecl(SLTokenReader* reader);
@@ -309,7 +318,6 @@ SLType* SLParseType(SLTokenReader* reader);
 SLType* SLParseArrayType(SLTokenReader* reader);
 SLType* SLParseRecordType(SLTokenReader* reader);
 
-// Parses until "end" / "else" / EOF, without consuming that token.
 bool SLParseBody(SLTokenReader* reader, SLBody* body);
 
 SLStmt* SLParseStatement(SLTokenReader* reader);
