@@ -24,11 +24,13 @@ typedef struct {
     SLScope* current_scope;
     SLDecl* current_routine;
 
-    SLSemType primitive_types[SL_SEM_ERROR + 1];
+    SLSemType primitive_types[SL_SEM_KIND_COUNT];
     SLSemanticError error;
 
     SLScope* all_scopes;
     SLSemType* current_return_type;
+
+    bool globals_collected;
 } SLSemanticState;
 
 SLScope* SLScopePush(SLSemanticState* state);
@@ -40,8 +42,12 @@ SLSemType* SLCheckExpr(SLSemanticState* state, SLExpr* expr);
 bool SLCheckStmt(SLSemanticState* state, SLStmt* stmt);
 bool SLAnalyzeRoutines(SLSemanticState* state);
 
+void SLSemanticErrorPrint(const SLSemanticState* state, FILE* out);
+bool SLAnalyzeGlobalInits(SLSemanticState* state);
+
 bool SLAnalyzeProgram(SLSemanticState* state, const SLProgram* program);
 
+static bool SLDeclareBuiltins(SLSemanticState* state);
 bool SLAnalyzeGlobal(SLSemanticState* state, const SLProgram* program);
 
 SLSymbol* SLScopeLookupLocal(const SLScope* scope, SLSlice name);

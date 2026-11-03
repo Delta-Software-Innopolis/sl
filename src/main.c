@@ -19,7 +19,7 @@ int main(int argc, char** argv) {
 
     SLTokenReader* reader = NULL;
     SLProgram* program = NULL;
-    
+
     SLSemanticState sem_state = {
         .compiler_state = state,
     };
@@ -42,11 +42,9 @@ int main(int argc, char** argv) {
     }
 
     if (!SLAnalyzeProgram(&sem_state, program)) {
-        fprintf(stderr, "%s:%d:%d: error: %s\n", state->filename,
-                sem_state.error.span.begin.line,
-                sem_state.error.span.begin.position,
-                sem_state.error.message);
-        goto cleanup;
+        SLSemanticErrorPrint(&sem_state, stderr);
+        SLFreeSemanticState(&sem_state);
+        return 1;
     }
 
     SLProgramDebugPrint(program);

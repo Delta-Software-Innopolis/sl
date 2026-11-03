@@ -11,7 +11,7 @@ typedef enum {
     SL_SEM_REAL,
     SL_SEM_BOOLEAN,
     SL_SEM_VOID,
-    SL_SEM_ERROR
+    SL_SEM_KIND_COUNT
 } SLSemTypeKind;
 
 typedef struct SLSemType {

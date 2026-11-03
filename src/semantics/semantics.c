@@ -1,7 +1,7 @@
 #include "semantics.h"
 
 bool SLAnalyzeProgram(SLSemanticState* state, const SLProgram* program) {
-    return SLAnalyzeGlobal(state, program) && SLAnalyzeGlobalTypes(state) && SLAnalyzeRoutines(state);
+    return SLAnalyzeGlobal(state, program) && SLAnalyzeGlobalTypes(state) && SLAnalyzeGlobalInits(state) && SLAnalyzeRoutines(state);
 }
 
 static bool SLSemanticFail(SLSemanticState* state, SLSpan span,
@@ -17,6 +17,35 @@ static bool SLSemanticFail(SLSemanticState* state, SLSpan span,
     }
 
     return false;
+}
+
+void SLSemanticErrorPrint(const SLSemanticState* state, FILE* out) {
+    const SLSemanticError* e = &state->error;
+    if (!e->has_error) return;
+
+    const SLCompilerState* cs = state->compiler_state;
+    const char* filename = cs != NULL && cs->filename != NULL ? cs->filename : "<input>";
+    int line = e->span.begin.line;
+    int column = e->span.begin.position;
+
+    fprintf(out, "error: %s\n", e->message);
+    if (line < 1) return;
+    fprintf(out, "  --> %s:%d:%d\n", filename, line, column);
+    if (cs == NULL || cs->text == NULL) return;
+
+    const char* start = cs->text;
+    const char* end = cs->text + cs->text_size;
+    for (int l = 1; l < line && start < end; ++start) {
+        if (*start == '\n') ++l;
+    }
+    const char* stop = start;
+    while (stop < end && *stop != '\n' && *stop != '\r') ++stop;
+
+    fprintf(out, "   | %.*s\n   | ", (int) (stop - start), start);
+    for (int i = 1; i < column; ++i) fputc(' ', out);
+    int width = e->span.end.line == line ? e->span.end.position - column : 1;
+    for (int i = 0; i < (width > 0 ? width : 1); ++i) fputc('^', out);
+    fputc('\n', out);
 }
 
 static SLScope* SLScopeNew(SLSemanticState* state, SLScope* parent) {
@@ -47,6 +76,7 @@ SLSymbol* SLScopeLookup(const SLScope* scope, SLSlice name) {
 bool SLAnalyzeGlobal(SLSemanticState* state, const SLProgram* program) {
     if (state == NULL) return false;
     if (state->error.has_error) return false;
+    if (state->globals_collected) return true;
 
     if (program == NULL) {
         return SLSemanticFail(state, (SLSpan){0}, "no program to analyze");
@@ -57,6 +87,7 @@ bool SLAnalyzeGlobal(SLSemanticState* state, const SLProgram* program) {
         if (state->global_scope == NULL) {
             return SLSemanticFail(state, (SLSpan){0}, "out of memory");
         }
+        if (!SLDeclareBuiltins(state)) return false;
     }
 
     state->current_scope = state->global_scope;
@@ -126,13 +157,19 @@ bool SLAnalyzeGlobal(SLSemanticState* state, const SLProgram* program) {
             return SLSemanticFail(state, decl->span, "out of memory");
         }
     }
-
+    state->globals_collected = true;
     return true;
 }
 
 static SLSemType* SLPrimitiveType(SLSemanticState* state, SLSemTypeKind kind) {
     state->primitive_types[kind].kind = kind;
     return &state->primitive_types[kind];
+}
+
+static bool SLTypesEqual(const SLSemType* a, const SLSemType* b) {
+    if (a == b) return true;
+    if (a == NULL || b == NULL) return false;
+    return a->kind == b->kind;
 }
 
 SLSemType* SLResolveType(SLSemanticState* state, const SLType* type) {
@@ -223,6 +260,50 @@ static void SLFreeSignature(SLRoutineSignature* signature) {
     free(signature);
 }
 
+static const struct {
+    const char* name;
+    SLSemTypeKind param;
+} SL_BUILTIN_PRINTS[] = {
+    {"print_integer", SL_SEM_INTEGER},
+    {"print_boolean", SL_SEM_BOOLEAN},
+    {"print_real", SL_SEM_REAL}
+};
+
+static bool SLDeclareBuiltins(SLSemanticState* state) {
+    SLSymbolTable* table = &state->global_scope->symbols;
+    size_t count = sizeof(SL_BUILTIN_PRINTS) / sizeof(SL_BUILTIN_PRINTS[0]);
+
+    for (size_t i = 0; i < count; ++i) {
+        SLSymbol* symbol = calloc(1, sizeof(*symbol));
+        SLRoutineSignature* sig = calloc(1, sizeof(*sig));
+        SLSemType** params = calloc(1, sizeof(*params));
+
+        if (symbol == NULL || sig == NULL || params == NULL) {
+            free(symbol);
+            free(sig);
+            free(params);
+            return SLSemanticFail(state, (SLSpan){0}, "out of memory");
+        }
+
+        params[0] = SLPrimitiveType(state, SL_BUILTIN_PRINTS[i].param);
+        sig->parameter_types = params;
+        sig->parameter_count = 1;
+        sig->return_type = SLPrimitiveType(state, SL_SEM_VOID);
+
+        symbol->name.start = (char*) SL_BUILTIN_PRINTS[i].name;
+        symbol->name.length = strlen(SL_BUILTIN_PRINTS[i].name);
+        symbol->kind = SL_SYMBOL_ROUTINE;
+        symbol->signature = sig;
+
+        if (!SLSymbolTablePush(table, symbol)) {
+            SLFreeSignature(sig);
+            free(symbol);
+            return SLSemanticFail(state, (SLSpan){0}, "out of memory");
+        }
+    }
+    return true;
+}
+
 static SLRoutineSignature* SLResolveSignature(SLSemanticState* state,
                                              const SLDecl* decl) {
     SLRoutineSignature* signature = calloc(1, sizeof(*signature));
@@ -283,7 +364,8 @@ static bool SLCheckSignature(SLSemanticState* state, const SLSymbol* symbol,
     }
 
     for (size_t i = 0; i < declaration->parameter_count; ++i) {
-        if (declaration->parameter_types[i] != definition->parameter_types[i]) {
+        if (!SLTypesEqual(declaration->parameter_types[i],
+                          definition->parameter_types[i])) {
             return SLSemanticFail(state,
                 symbol->definition->value.routine.params.items[i].span,
                 "type mismatch for parameter %zu of routine '%.*s'",
@@ -291,7 +373,7 @@ static bool SLCheckSignature(SLSemanticState* state, const SLSymbol* symbol,
         }
     }
 
-    if (declaration->return_type != definition->return_type) {
+    if (!SLTypesEqual(declaration->return_type, definition->return_type)) {
         return SLSemanticFail(state, span,
                               "return type mismatch for routine '%.*s'",
                               (int) symbol->name.length, symbol->name.start);
@@ -339,6 +421,12 @@ bool SLAnalyzeGlobalTypes(SLSemanticState* state) {
                 bool matches = SLCheckSignature(state, symbol, definition);
                 SLFreeSignature(definition);
                 if (!matches) goto fail;
+            }
+            if (symbol->definition == NULL) {
+                SLSemanticFail(state, decl->span,
+                               "routine '%.*s' is declared but never defined",
+                               (int) symbol->name.length, symbol->name.start);
+                goto fail;
             }
         }
     }
@@ -394,22 +482,26 @@ static const char* SLTypeName(const SLSemType* t) {
         case SL_SEM_REAL:    return "real";
         case SL_SEM_BOOLEAN: return "boolean";
         case SL_SEM_VOID:    return "void";
-        default:             return "<error>";
+        default:             return "<unknown>";
     }
-}
-
-// TODO
-static bool SLTypesEqual(const SLSemType* a, const SLSemType* b) {
-    return a == b;
 }
 
 static bool SLIsNumeric(const SLSemType* t) {
     return t->kind == SL_SEM_INTEGER || t->kind == SL_SEM_REAL;
 }
 
+static bool SLConvertible(const SLSemType* to, const SLSemType* from) {
+    if (SLTypesEqual(to, from)) return true;
+    switch (to->kind) {
+        case SL_SEM_REAL:    return from->kind == SL_SEM_INTEGER;
+        case SL_SEM_INTEGER: return from->kind == SL_SEM_BOOLEAN;   // true -> 1, false -> 0
+        case SL_SEM_BOOLEAN: return from->kind == SL_SEM_INTEGER;   // только 0 и 1
+        default:             return false;
+    }
+}
+
 static bool SLAssignable(const SLSemType* to, const SLSemType* from) {
-    return SLTypesEqual(to, from)
-        || (to->kind == SL_SEM_REAL && from->kind == SL_SEM_INTEGER);
+    return SLConvertible(to, from);
 }
 
 static SLSemType* SLCheckValue(SLSemanticState* state, SLExpr* expr) {
@@ -630,7 +722,7 @@ static bool SLCheckScopedBody(SLSemanticState* state, SLBody* body) {
 static bool SLCheckCondition(SLSemanticState* state, SLExpr* cond) {
     SLSemType* type = SLCheckValue(state, cond);
     if (type == NULL) return false;
-    if (type->kind != SL_SEM_BOOLEAN) {
+    if (!SLConvertible(SLPrimitiveType(state, SL_SEM_BOOLEAN), type)) {
         return SLSemanticFail(state, cond->span,
                               "condition must be boolean, got '%s'",
                               SLTypeName(type));
@@ -647,10 +739,10 @@ bool SLCheckStmt(SLSemanticState* state, SLStmt* stmt) {
             SLSemType* tt = SLCheckValue(state, target);
             if (tt == NULL) return false;
             if (target->type == SL_EXPR_NAME && !target->symbol->is_mutable) {
-                return SLSemanticFail(state, target->span,
-                                      "cannot assign to '%.*s'",
-                                      (int) target->symbol->name.length,
-                                      target->symbol->name.start);
+            const char* what = target->symbol->kind == SL_SYMBOL_ITERATOR ? "loop variable " : "";
+            return SLSemanticFail(state, target->span, "cannot assign to %s'%.*s'", what,
+                          (int) target->symbol->name.length,
+                          target->symbol->name.start);
             }
             SLSemType* vt = SLCheckValue(state, stmt->value.assign.value);
             if (vt == NULL) return false;
@@ -730,33 +822,50 @@ bool SLCheckStmt(SLSemanticState* state, SLStmt* stmt) {
     return SLSemanticFail(state, stmt->span, "invalid statement");
 }
 
+static SLSemType* SLTypeOfVarDecl(SLSemanticState* state, const SLDecl* decl,
+                                  SLSemType* annotated) {
+    SLToken* name = decl->value.var_decl.name;
+    SLExpr* init = decl->value.var_decl.init;
+    SLSemType* type = annotated;
+
+    if (init != NULL) {
+        SLSemType* init_type = SLCheckValue(state, init);
+        if (init_type == NULL) return NULL;
+
+        if (type == NULL) {
+            type = init_type;
+        } else if (!SLAssignable(type, init_type)) {
+            SLSemanticFail(state, decl->span,
+                "cannot initialize '%.*s' of type '%s' with '%s'",
+                (int) name->value.length, name->value.start,
+                SLTypeName(type), SLTypeName(init_type));
+            return NULL;
+        }
+    }
+
+    if (type == NULL) {
+        SLSemanticFail(state, decl->span,
+            "variable '%.*s' needs a type or an initializer",
+            (int) name->value.length, name->value.start);
+        return NULL;
+    }
+    return type;
+}
+
 static bool SLCheckLocalDecl(SLSemanticState* state, SLDecl* decl) {
     switch (decl->kind) {
         case SL_DECL_VAR: {
             SLToken* name = decl->value.var_decl.name;
-            SLSemType* type = NULL;
+            SLSemType* annotated = NULL;
 
             if (decl->value.var_decl.type != NULL) {
-                type = SLResolveType(state, decl->value.var_decl.type);
-                if (type == NULL) return false;
+                annotated = SLResolveType(state, decl->value.var_decl.type);
+                if (annotated == NULL) return false;
             }
-            if (decl->value.var_decl.init != NULL) {
-                SLSemType* init = SLCheckValue(state, decl->value.var_decl.init);
-                if (init == NULL) return false;
-                if (type == NULL) {
-                    type = init;
-                } else if (!SLAssignable(type, init)) {
-                    return SLSemanticFail(state, decl->span,
-                        "cannot initialize '%.*s' of type '%s' with '%s'",
-                        (int) name->value.length, name->value.start,
-                        SLTypeName(type), SLTypeName(init));
-                }
-            }
-            if (type == NULL) {
-                return SLSemanticFail(state, decl->span,
-                    "variable '%.*s' needs a type or an initializer",
-                    (int) name->value.length, name->value.start);
-            }
+
+            SLSemType* type = SLTypeOfVarDecl(state, decl, annotated);
+            if (type == NULL) return false;
+
             SLSymbol* symbol = SLScopeDeclare(state, name->value, SL_SYMBOL_VAR,
                                               type, decl->span, true);
             if (symbol == NULL) return false;
@@ -783,6 +892,33 @@ static bool SLCheckLocalDecl(SLSemanticState* state, SLDecl* decl) {
                                   "nested routines are not supported");
     }
     return SLSemanticFail(state, decl->span, "invalid declaration");
+}
+
+bool SLAnalyzeGlobalInits(SLSemanticState* state) {
+    if (state == NULL || state->error.has_error) return false;
+    if (state->global_scope == NULL) {
+        return SLSemanticFail(state, (SLSpan){0},
+                              "global declarations have not been analyzed");
+    }
+
+    SLScope* saved_scope = state->current_scope;
+    state->current_scope = state->global_scope;
+    SLSymbolTable* table = &state->global_scope->symbols;
+
+    for (size_t i = 0; i < table->count; ++i) {
+        SLSymbol* symbol = table->items[i];
+        if (symbol->kind != SL_SYMBOL_VAR || symbol->declaration == NULL) continue;
+
+        SLSemType* type = SLTypeOfVarDecl(state, symbol->declaration, symbol->type);
+        if (type == NULL) {
+            state->current_scope = saved_scope;
+            return false;
+        }
+        symbol->type = type;
+    }
+
+    state->current_scope = saved_scope;
+    return true;
 }
 
 static bool SLCheckBody(SLSemanticState* state, SLBody* body) {
@@ -841,7 +977,7 @@ bool SLAnalyzeRoutines(SLSemanticState* state) {
     for (size_t i = 0; i < table->count; ++i) {
         SLSymbol* symbol = table->items[i];
         if (symbol->kind != SL_SYMBOL_ROUTINE || symbol->definition == NULL) {
-            continue;  // TODO
+            continue;
         }
         if (!SLAnalyzeRoutine(state, symbol)) return false;
     }
