@@ -1,4 +1,5 @@
-routine main(n: integer) =
+routine main() =
+    var n: integer = 5
     var prev: integer = 0
     var cur: integer = 1
 
@@ -9,6 +10,6 @@ routine main(n: integer) =
         var tmp: integer = prev
         prev := cur
         cur := tmp + cur
-        //print_integer(cur)
+        print_integer(cur)
     end
 end

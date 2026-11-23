@@ -164,6 +164,7 @@ typedef struct {
     SLToken* name;
     SLType* type;
     SLSpan span;
+    SLSymbol* symbol;
 } SLParam;
 
 typedef struct {
@@ -182,6 +183,7 @@ typedef enum {
 
 struct SLDecl {
     SLDeclKind kind;
+    SLSymbol* symbol;
     SLSpan span;
 
     union {
@@ -235,6 +237,7 @@ struct SLStmt {
 
         struct {
             SLToken* iterator;
+            SLSymbol* symbol;
             SLExpr* from;
             SLExpr* to;  // NULL if the range is a single expr
             bool reverse;

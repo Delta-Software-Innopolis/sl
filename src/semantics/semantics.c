@@ -183,6 +183,7 @@ bool SLAnalyzeGlobal(SLSemanticState* state, const SLProgram* program) {
                 existing->definition == NULL &&
                 decl->value.routine.body_kind != SL_ROUTINE_FORWARD) {
                 existing->definition = decl;
+                decl->symbol = existing;
                 continue;
             }
 
@@ -211,6 +212,7 @@ bool SLAnalyzeGlobal(SLSemanticState* state, const SLProgram* program) {
             free(symbol);
             return SLSemanticFail(state, decl->span, "out of memory");
         }
+        decl->symbol = symbol;
     }
     state->globals_collected = true;
     return true;
@@ -460,6 +462,7 @@ SLSemType* SLResolveType(SLSemanticState* state, const SLType* type) {
 
                 record->as.record.fields[i].name = name->value;
                 record->as.record.fields[i].type = field_type;
+                record->as.record.fields[i].init = field->value.var_decl.init;
                 record->as.record.count = i + 1;
             }
             return record;
@@ -1111,11 +1114,11 @@ bool SLCheckStmt(SLSemanticState* state, SLStmt* stmt) {
             }
 
             if (SLScopePush(state) == NULL) return false;
-            bool ok =
-                SLScopeDeclare(state, stmt->value.for_loop.iterator->value,
-                               SL_SYMBOL_ITERATOR, iterator_type, stmt->span,
-                               false) != NULL &&
-                SLCheckBody(state, &stmt->value.for_loop.body);
+            stmt->value.for_loop.symbol = SLScopeDeclare(
+                state, stmt->value.for_loop.iterator->value, SL_SYMBOL_ITERATOR,
+                iterator_type, stmt->span, false);
+            bool ok = stmt->value.for_loop.symbol != NULL &&
+                      SLCheckBody(state, &stmt->value.for_loop.body);
             SLScopePop(state);
             return ok;
         }
@@ -1198,6 +1201,7 @@ static bool SLCheckLocalDecl(SLSemanticState* state, SLDecl* decl) {
                                               type, decl->span, true);
             if (symbol == NULL) return false;
             symbol->declaration = decl;
+            decl->symbol = symbol;
             return true;
         }
 
@@ -1273,9 +1277,10 @@ static bool SLAnalyzeRoutine(SLSemanticState* state, SLSymbol* symbol) {
 
     bool ok = true;
     for (size_t i = 0; ok && i < params->count; ++i) {
-        ok = SLScopeDeclare(state, params->items[i].name->value,
-                            SL_SYMBOL_PARAM, sig->parameter_types[i],
-                            params->items[i].span, true) != NULL;
+        params->items[i].symbol = SLScopeDeclare(
+            state, params->items[i].name->value, SL_SYMBOL_PARAM,
+            sig->parameter_types[i], params->items[i].span, true);
+        ok = params->items[i].symbol != NULL;
     }
 
     if (ok) {

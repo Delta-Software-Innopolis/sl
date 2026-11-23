@@ -19,6 +19,7 @@ typedef enum {
 typedef struct SLSemField {
     SLSlice name;
     struct SLSemType* type;
+    const SLExpr* init;
 } SLSemField;
 
 typedef struct SLSemType {
