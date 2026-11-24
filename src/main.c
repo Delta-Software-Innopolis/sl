@@ -4,7 +4,7 @@
 #include "codegen/codegen.h"
 #include "sl.h"
 
-static const char usage[] = "usage: sl [--emit-llvm | -c | --dump-ast] input.sl [-o output]\n";
+static const char usage[] = "usage: sl [--emit-llvm | -c | --dump-ast | --call <routine> | --arg <arg>] input.sl [-o output]\n";
 
 static char* SLDefaultOutput(const char* input, SLCodegenOutput mode) {
     if (mode == SL_OUTPUT_EXECUTABLE) return strdup("a.out");
