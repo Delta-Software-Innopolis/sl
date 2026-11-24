@@ -25,6 +25,7 @@ typedef struct {
     size_t binding_capacity;
     SLRecordTypeEntry* record_types;
     SLCodegenError error;
+    const SLCodegenOptions* options;
 } SLCodegenContext;
 
 LLVMTypeRef SLCodegenType(SLCodegenContext* ctx, const SLSemType* type,

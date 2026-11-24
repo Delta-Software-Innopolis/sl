@@ -12,6 +12,9 @@ typedef enum {
 typedef struct {
     SLCodegenOutput output;
     const char* output_path;
+    const char* entry;
+    const char** args;
+    size_t arg_count;
 } SLCodegenOptions;
 
 typedef struct {

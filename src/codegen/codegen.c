@@ -68,6 +68,7 @@ LLVMValueRef SLCGSlot(SLCodegenContext* ctx, LLVMTypeRef type) {
 bool SLGenerateCode(const SLProgram* program, const SLSemanticState* semantics,
                     const SLCodegenOptions* options, SLCodegenError* error) {
     SLCodegenContext ctx = {0};
+    ctx.options = options;
 
     char* message = NULL;
 
@@ -82,7 +83,7 @@ bool SLGenerateCode(const SLProgram* program, const SLSemanticState* semantics,
         ctx.builder = LLVMCreateBuilderInContext(ctx.llvm);
 
         if (SLCGDeclareProgram(&ctx, program, semantics)) {
-            if (options->output == SL_OUTPUT_EXECUTABLE &&
+            if (options->output == SL_OUTPUT_EXECUTABLE && !options->entry &&
                 !LLVMGetNamedFunction(ctx.module, "main")) {
 
                 SLSymbol* main_symbol = SLSymbolTableFind(
@@ -109,7 +110,7 @@ bool SLGenerateCode(const SLProgram* program, const SLSemanticState* semantics,
 
         LLVMContextDispose(ctx.llvm);
     }
-    
+
     if (error) *error = ctx.error;
     return !ctx.error.has_error;
 }

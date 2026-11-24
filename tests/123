@@ -1,0 +1,8 @@
+routine main(a : integer) : integer =
+  if a > 5 then
+    return 0
+  else
+    print_integer(a)
+    return 0
+  end
+end

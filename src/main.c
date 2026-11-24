@@ -29,6 +29,7 @@ static char* SLDefaultOutput(const char* input, SLCodegenOutput mode) {
 
 int main(int argc, char** argv) {
     SLCodegenOptions options = {.output = SL_OUTPUT_EXECUTABLE};
+    options.args = calloc((size_t)argc, sizeof(char*));
 
     char* input = NULL;
     bool dump_ast = false, mode_selected = false, positional = false;
@@ -46,6 +47,12 @@ int main(int argc, char** argv) {
             if (options.output_path || ++i == argc || !*argv[i]) goto invalid;
 
             options.output_path = argv[i];
+        } else if (!strcmp(arg, "--call")) {
+            if (options.entry || ++i == argc || !*argv[i]) goto invalid;
+            options.entry = argv[i];
+        } else if (!strcmp(arg, "--arg")) {
+            if (++i == argc) goto invalid;
+            options.args[options.arg_count++] = argv[i];
         } else if (!strcmp(arg, "--help")) {
             fputs(usage, stdout);
 
@@ -149,7 +156,7 @@ cleanup:
     free(default_path);
     SLFreeSemanticState(&sem_state);
     SLFreeProgram(program);
-    
+
     free(reader);
     free(state->tokens.items);
     free(state->text);

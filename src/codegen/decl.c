@@ -1,5 +1,6 @@
 #include <limits.h>
-
+#include <errno.h>
+#include <stdlib.h>
 #include "codegen_internal.h"
 
 bool SLCGByReference(const SLSemType* type) {
@@ -74,7 +75,7 @@ static bool SLDeclareGlobal(SLCodegenContext* ctx, const SLSymbol* symbol) {
 static bool SLHasDefaults(const SLSemType* type) {
     if (type->kind == SL_SEM_ARRAY)
         return SLHasDefaults(type->as.array.element);
-    
+
     if (type->kind == SL_SEM_RECORD) {
         for (size_t i = 0; i < type->as.record.count; ++i) {
             const SLSemField* field = &type->as.record.fields[i];
@@ -109,7 +110,7 @@ static bool SLFieldDefaults(SLCodegenContext* ctx, const SLSemType* type,
 
         if (!SLFieldDefaults(ctx, type->as.array.element, element, span))
             return false;
-        
+
         LLVMValueRef next = LLVMBuildAdd(ctx->builder, index,
                                          LLVMConstInt(i64, 1, false), "next");
         LLVMBasicBlockRef latch = LLVMGetInsertBlock(ctx->builder);
@@ -261,6 +262,67 @@ static void SLMainWrapper(SLCodegenContext* ctx, LLVMValueRef fn,
     LLVMBuildRet(ctx->builder, status);
 }
 
+static bool SLEntryWrapper(SLCodegenContext* ctx, const SLSymbol* symbol) {
+    const SLCodegenOptions* opt = ctx->options;
+    const SLRoutineSignature* sig = symbol->signature;
+    size_t n = sig->parameter_count;
+    char msg[160];
+
+    if (n != opt->arg_count) {
+        snprintf(msg, sizeof msg, "routine expects %zu argument(s), got %zu", n, opt->arg_count);
+        return SLCGFail(ctx, symbol->span, msg);
+    }
+    LLVMValueRef fn = SLCGLookup(ctx, symbol, symbol->span);
+    if (!fn) return false;
+
+    LLVMValueRef* args = n ? calloc(n, sizeof *args) : NULL;
+    if (n && !args) return SLCGFail(ctx, symbol->span, "out of memory");
+
+    LLVMTypeRef i64 = LLVMInt64TypeInContext(ctx->llvm);
+    for (size_t i = 0; i < n; ++i) {
+        const char* s = opt->args[i];
+        char* end;
+        switch (sig->parameter_types[i]->kind) {
+            case SL_SEM_INTEGER: {
+                errno = 0;
+                long long v = strtoll(s, &end, 10);
+                if (errno || end == s || *end) goto bad;
+                args[i] = LLVMConstInt(i64, (unsigned long long)v, true);
+                break;
+            }
+            case SL_SEM_REAL: {
+                double d = strtod(s, &end);
+                if (end == s || *end) goto bad;
+                args[i] = LLVMConstReal(LLVMDoubleTypeInContext(ctx->llvm), d);
+                break;
+            }
+            case SL_SEM_BOOLEAN:
+                if (strcmp(s, "true") && strcmp(s, "false")) goto bad;
+                args[i] = LLVMConstInt(LLVMInt1TypeInContext(ctx->llvm), !strcmp(s, "true"), false);
+                break;
+            default:
+                free(args);
+                return SLCGFail(ctx, symbol->span, "only integer, real and boolean arguments can be passed from the command line");
+        }
+        continue;
+    bad:
+        free(args);
+        snprintf(msg, sizeof msg, "invalid value '%s' for argument %zu", s, i + 1);
+        return SLCGFail(ctx, symbol->span, msg);
+    }
+
+    LLVMTypeRef i32 = LLVMInt32TypeInContext(ctx->llvm);
+    SLBeginFunction(ctx, LLVMAddFunction(ctx->module, "main", LLVMFunctionType(i32, NULL, 0, false)));
+    LLVMValueRef result = LLVMBuildCall2(ctx->builder, LLVMGlobalGetValueType(fn), fn, args, (unsigned)n, "");
+    free(args);
+
+    LLVMValueRef status = sig->return_type->kind == SL_SEM_INTEGER
+                              ? LLVMBuildTrunc(ctx->builder, result, i32, "status")
+                              : LLVMConstNull(i32);
+    LLVMBuildRet(ctx->builder, status);
+    return true;
+}
+
 bool SLCGDeclareProgram(SLCodegenContext* ctx, const SLProgram* program,
                         const SLSemanticState* semantics) {
     const SLSymbolTable* globals = &semantics->global_scope->symbols;
@@ -309,6 +371,14 @@ bool SLCGDeclareProgram(SLCodegenContext* ctx, const SLProgram* program,
         if (name.length == 4 && !memcmp(name.start, "main", 4))
             SLMainWrapper(ctx, ctx->current_function, decl->symbol->signature);
     }
-    
+
+    if (ctx->options->entry) {
+        const char* e = ctx->options->entry;
+        SLSymbol* sym = SLSymbolTableFind(globals, (SLSlice){e, strlen(e)});
+        if (!sym || sym->kind != SL_SYMBOL_ROUTINE)
+            return SLCGFail(ctx, (SLSpan){0}, "entry routine not found");
+        return SLEntryWrapper(ctx, sym);
+    }
+
     return true;
 }
