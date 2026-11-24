@@ -92,8 +92,6 @@ static bool SLLink(SLCodegenContext* ctx, char* object, char* output) {
     return SLCGFail(ctx, (SLSpan){0}, message);
 }
 
-/* Stage next to the destination so rename publishes only a complete artifact.
- */
 bool SLCGEmit(SLCodegenContext* ctx, const SLCodegenOptions* options) {
     const char* dest = options->output_path;
     const char* slash = strrchr(dest, '/');
@@ -146,7 +144,7 @@ bool SLCGEmit(SLCodegenContext* ctx, const SLCodegenOptions* options) {
         default:
             SLCGFail(ctx, (SLSpan){0}, "unknown output mode");
     }
-    
+
     if (!ctx->error.has_error && rename(output, dest) != 0)
         SLSystemError(ctx, "cannot publish output", dest, errno);
 

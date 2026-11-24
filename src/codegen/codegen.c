@@ -48,7 +48,6 @@ LLVMBasicBlockRef SLCGBlock(SLCodegenContext* ctx, const char* name) {
                                          name);
 }
 
-/* A declaration inside a loop reuses its stack slot on each iteration. */
 LLVMValueRef SLCGSlot(SLCodegenContext* ctx, LLVMTypeRef type) {
     LLVMBuilderRef builder = LLVMCreateBuilderInContext(ctx->llvm);
     LLVMBasicBlockRef entry = LLVMGetEntryBasicBlock(ctx->current_function);

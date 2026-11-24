@@ -12,7 +12,6 @@ typedef struct {
     LLVMValueRef value;
 } SLCodegenBinding;
 
-/* One zero-initialized context per module. Semantic pointers are borrowed. */
 typedef struct {
     LLVMContextRef llvm;
     LLVMModuleRef module;
@@ -30,10 +29,8 @@ typedef struct {
 
 LLVMTypeRef SLCodegenType(SLCodegenContext* ctx, const SLSemType* type,
                           SLSpan span);
-/* value is an SL rvalue in ctx->llvm. For casts, position the builder first. */
 LLVMValueRef SLCodegenConvert(SLCodegenContext* ctx, LLVMValueRef value,
                               const SLSemType* target, SLSpan span);
-/* Call at module teardown. LLVM owns the types until context disposal. */
 void SLFreeCodegenTypes(SLCodegenContext* ctx);
 
 bool SLCGFail(SLCodegenContext* ctx, SLSpan span, const char* message);

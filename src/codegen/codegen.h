@@ -23,7 +23,6 @@ typedef struct {
     char message[256];
 } SLCodegenError;
 
-/* Borrows the analyzed program and its semantic state for the entire call. */
 bool SLGenerateCode(const SLProgram* program, const SLSemanticState* semantics,
                     const SLCodegenOptions* options, SLCodegenError* error);
 

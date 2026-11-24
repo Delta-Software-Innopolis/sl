@@ -56,8 +56,6 @@ static bool SLDeclareGlobal(SLCodegenContext* ctx, const SLSymbol* symbol) {
     else
         LLVMSetValueName2(value, name.start, name.length);
 
-    /* The C runtime takes _Bool with the zeroext parameter attribute. */
-
     if (routine && !symbol->declaration) {
         for (size_t i = 0; i < symbol->signature->parameter_count; ++i) {
             if (symbol->signature->parameter_types[i]->kind == SL_SEM_BOOLEAN) {
@@ -85,8 +83,6 @@ static bool SLHasDefaults(const SLSemType* type) {
     return false;
 }
 
-/* Storage is initially zero. Evaluate explicit field defaults per instance,
-   including each element of arrays of records. */
 static bool SLFieldDefaults(SLCodegenContext* ctx, const SLSemType* type,
                             LLVMValueRef address, SLSpan span) {
     LLVMTypeRef lowered = SLCodegenType(ctx, type, span);
@@ -219,8 +215,7 @@ static bool SLDefineRoutine(SLCodegenContext* ctx, const SLDecl* decl) {
             if (ctx->return_type->kind == SL_SEM_VOID)
                 LLVMBuildRetVoid(ctx->builder);
             else
-                LLVMBuildUnreachable(
-                    ctx->builder); /* semantic checks prove termination */
+                LLVMBuildUnreachable(ctx->builder);
         }
     }
     ctx->binding_count = outer;

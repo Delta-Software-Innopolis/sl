@@ -60,8 +60,6 @@ LLVMValueRef SLCGAddress(SLCodegenContext* ctx, const SLExpr* expr) {
         SLCGFail(ctx, expr->span, "unknown record field");
         return NULL;
     }
-    /* Aggregate results used as reference arguments need addressable storage.
-     */
     LLVMValueRef value = SLCGExpr(ctx, expr);
 
     if (!value) return NULL;
@@ -135,7 +133,6 @@ static LLVMValueRef SLIntegerDivision(SLCodegenContext* ctx, LLVMValueRef a,
     LLVMValueRef neg_one = LLVMBuildICmp(builder, LLVMIntEQ, b, LLVMConstAllOnes(i64), "minus.one");
 
     if (modulo) {
-        /* MIN % -1 is zero in SL; srem would produce poison. */
         b = LLVMBuildSelect(builder, neg_one, LLVMConstInt(i64, 1, false), b,
                             "divisor");
     } else {
@@ -225,7 +222,7 @@ static LLVMValueRef SLBinary(SLCodegenContext* ctx, const SLExpr* expr) {
             SLCGFail(ctx, expr->span, "unknown binary operator");
             return NULL;
     }
-    
+
     return real ? LLVMBuildFCmp(ir, fp, a, b, "cmp")
                 : LLVMBuildICmp(ir, ip, a, b, "cmp");
 }

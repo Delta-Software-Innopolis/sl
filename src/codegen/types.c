@@ -49,8 +49,6 @@ static LLVMTypeRef SLRecordType(SLCodegenContext* ctx, const SLSemType* type,
         SLTypeError(ctx, span, "out of memory caching record type");
         return NULL;
     }
-    /* Identified structs preserve SL's nominal record identity. LLVM gives
-       each new declaration a distinct name, including anonymous records. */
     entry->source = type;
     entry->type = LLVMStructCreateNamed(ctx->llvm, "sl.record");
     LLVMStructSetBody(entry->type, fields, (unsigned)count, false);

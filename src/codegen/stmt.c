@@ -107,7 +107,6 @@ static bool SLFor(SLCodegenContext* ctx, const SLStmt* stmt) {
     LLVMBuildStore(ctx->builder, item, slot);
     if (!SLCGBody(ctx, &stmt->value.for_loop.body)) return false;
     if (SLBlockOpen(ctx)) {
-        /* Test the inclusive endpoint before stepping past INT64_MIN/MAX. */
         LLVMBasicBlockRef step = SLCGBlock(ctx, "for.step");
         LLVMValueRef done =
             LLVMBuildICmp(ctx->builder, LLVMIntEQ, index, limit, "done");
